@@ -1,5 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import { PayloadTooLargeException, BadRequestException } from '@nestjs/common';
+import { PayloadTooLargeException } from '@nestjs/common';
 import type { Request } from 'express';
 import * as path from 'path';
 
@@ -112,11 +112,16 @@ export function evidenceFileFilter(
   cb: (error: Error | null, acceptFile: boolean) => void,
 ): void {
   if (!isSafeFilename(file.originalname)) {
-    return cb(new BadRequestException('Invalid filename'), false);
+    return cb(
+      new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Invalid filename'),
+      false,
+    );
   }
   if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(file.mimetype)) {
     return cb(
-      new BadRequestException(
+      new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
         `Invalid MIME type: ${file.mimetype}. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
       ),
       false,
@@ -125,7 +130,9 @@ export function evidenceFileFilter(
   const ext = path.extname(file.originalname).toLowerCase();
   if (!ext || !(ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
     return cb(
-      new BadRequestException(
+      new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
         `Invalid file extension: ${ext || '(none)'}. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
       ),
       false,

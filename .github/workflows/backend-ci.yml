@@ -109,7 +109,6 @@ jobs:
           REDIS_PORT: 6379
           NODE_ENV: test
           ONCHAIN_ADAPTER: mock
-          SKIP_BACKGROUND_JOBS: "true"
 
       - name: Build
         run: pnpm --filter backend run build

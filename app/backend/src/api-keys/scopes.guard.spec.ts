@@ -1,7 +1,6 @@
 import { AppException } from '../common/dto/error-response.dto';
 import { ScopesGuard } from './scopes.guard';
 import { ApiKeyScope } from './api-key-scope.enum';
-import { ForbiddenException } from '@nestjs/common';
 
 const mockReflector = { getAllAndOverride: jest.fn() };
 

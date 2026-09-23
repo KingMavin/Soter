@@ -1,5 +1,5 @@
 import { AppException } from '../common/dto/error-response.dto';
-import { BadRequestException } from '@nestjs/common';
+
 import { RecipientsService } from './recipients.service';
 
 describe('RecipientsService', () => {

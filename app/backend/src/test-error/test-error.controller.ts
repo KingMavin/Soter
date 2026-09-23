@@ -5,11 +5,6 @@ import {
   Post,
   Body,
   ValidationPipe,
-  BadRequestException,
-  InternalServerErrorException,
-  UnauthorizedException,
-  ForbiddenException,
-  NotFoundException,
   UsePipes,
 } from '@nestjs/common';
 import { CreateVerificationDto } from '../verification/dto/create-verification.dto';
@@ -39,7 +34,11 @@ export class TestErrorController {
   @ApiBadRequestResponse({ description: 'Bad request triggered.' })
   @Get('bad-request')
   getBadRequest() {
-    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'This is a bad request error');
+    throw new AppException(
+      ERROR_CODES.BAD_REQUEST,
+      400,
+      'This is a bad request error',
+    );
   }
 
   @ApiOperation({ summary: 'Trigger an InternalServerErrorException' })
@@ -48,14 +47,22 @@ export class TestErrorController {
   })
   @Get('internal-server-error')
   getInternalServerError() {
-    throw new AppException(ERROR_CODES.INTERNAL_SERVER_ERROR, 500, 'This is an internal server error');
+    throw new AppException(
+      ERROR_CODES.INTERNAL_SERVER_ERROR,
+      500,
+      'This is an internal server error',
+    );
   }
 
   @ApiOperation({ summary: 'Trigger an UnauthorizedException' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized error triggered.' })
   @Get('unauthorized')
   getUnauthorized() {
-    throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Authentication required');
+    throw new AppException(
+      ERROR_CODES.UNAUTHORIZED,
+      401,
+      'Authentication required',
+    );
   }
 
   @ApiOperation({ summary: 'Trigger a ForbiddenException' })

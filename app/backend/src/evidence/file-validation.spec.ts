@@ -1,5 +1,5 @@
 import { AppException } from '../common/dto/error-response.dto';
-import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
+import { PayloadTooLargeException } from '@nestjs/common';
 import { Readable } from 'stream';
 import {
   ALLOWED_EXTENSIONS,

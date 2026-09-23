@@ -1,5 +1,5 @@
 import { AppException } from '../common/dto/error-response.dto';
-import { UnauthorizedException } from '@nestjs/common';
+
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { filter, firstValueFrom, take } from 'rxjs';

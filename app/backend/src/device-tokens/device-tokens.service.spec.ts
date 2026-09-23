@@ -1,6 +1,6 @@
 import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+
 import { DeviceTokensService } from './device-tokens.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DevicePlatform } from '@prisma/client';

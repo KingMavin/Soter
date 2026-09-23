@@ -1,10 +1,5 @@
 import { AppException } from '../common/dto/error-response.dto';
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+
 import * as crypto from 'crypto';
 import * as fsPromises from 'fs/promises';
 import { UploadSessionService } from '../evidence/upload-session.service';

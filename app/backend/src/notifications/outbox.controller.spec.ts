@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+
 import { OutboxController } from './outbox.controller';
 import { NotificationsService } from './notifications.service';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';

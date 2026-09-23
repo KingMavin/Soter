@@ -1,5 +1,5 @@
 import { AppException } from '../../common/dto/error-response.dto';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'node:crypto';
 import { HmacService } from '../hmac/hmac.service';

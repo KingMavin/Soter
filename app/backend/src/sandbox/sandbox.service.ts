@@ -1,5 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { ConfigService } from '@nestjs/config';
@@ -34,7 +34,10 @@ export class SandboxService {
         `Attempted demo seed reset in disallowed environment: ${nodeEnv}`,
         SandboxService.name,
       );
-      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Demo seed reset is only allowed in development, test, or sandbox environments.',
+      throw new AppException(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'Demo seed reset is only allowed in development, test, or sandbox environments.',
       );
     }
 

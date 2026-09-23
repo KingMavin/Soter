@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { EncryptionService } from '../common/encryption/encryption.service';
@@ -60,11 +55,18 @@ export class CancelAndReissueService {
     }
 
     if (claim.status === ClaimStatus.cancelled) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Claim is already cancelled');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Claim is already cancelled',
+      );
     }
 
     if (!CANCELLABLE_STATUSES.includes(claim.status)) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot cancel a claim in status "${claim.status}". ` +
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        `Cannot cancel a claim in status "${claim.status}". ` +
           `Only ${CANCELLABLE_STATUSES.join(', ')} claims may be cancelled.`,
       );
     }
@@ -153,15 +155,26 @@ export class CancelAndReissueService {
     });
 
     if (!original || original.deletedAt) {
-      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Original claim not found');
+      throw new AppException(
+        ERROR_CODES.NOT_FOUND,
+        404,
+        'Original claim not found',
+      );
     }
 
     if (original.status === ClaimStatus.cancelled) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Original claim is already cancelled');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Original claim is already cancelled',
+      );
     }
 
     if (!CANCELLABLE_STATUSES.includes(original.status)) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot reissue from a claim in status "${original.status}". ` +
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        `Cannot reissue from a claim in status "${original.status}". ` +
           `Only ${CANCELLABLE_STATUSES.join(', ')} claims may be reissued.`,
       );
     }
@@ -409,7 +422,7 @@ export class CancelAndReissueService {
       }
     }
 
-    return results.filter(Boolean) as NonNullable<(typeof results)[number]>[];
+    return results.filter(Boolean);
   }
 
   /**

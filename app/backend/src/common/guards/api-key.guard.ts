@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../../common/dto/error-response.dto';
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
@@ -51,7 +46,11 @@ export class ApiKeyGuard implements CanActivate {
           : undefined;
 
     if (!apiKey) {
-      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Invalid or missing API key');
+      throw new AppException(
+        ERROR_CODES.UNAUTHORIZED,
+        401,
+        'Invalid or missing API key',
+      );
     }
 
     const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
@@ -69,11 +68,19 @@ export class ApiKeyGuard implements CanActivate {
       const now = Date.now();
 
       if (record.revokedAt && record.revokedAt.getTime() <= now) {
-        throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'API key has been revoked');
+        throw new AppException(
+          ERROR_CODES.UNAUTHORIZED,
+          401,
+          'API key has been revoked',
+        );
       }
 
       if (record.expiresAt && record.expiresAt.getTime() <= now) {
-        throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'API key has expired');
+        throw new AppException(
+          ERROR_CODES.UNAUTHORIZED,
+          401,
+          'API key has expired',
+        );
       }
 
       // A rotated-out predecessor stays valid until its grace window ends.
@@ -82,7 +89,10 @@ export class ApiKeyGuard implements CanActivate {
         record.graceExpiresAt.getTime() <= now &&
         record.replacedById
       ) {
-        throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'API key has been rotated and its grace period has ended',
+        throw new AppException(
+          ERROR_CODES.UNAUTHORIZED,
+          401,
+          'API key has been rotated and its grace period has ended',
         );
       }
 
@@ -114,6 +124,10 @@ export class ApiKeyGuard implements CanActivate {
       return true;
     }
 
-    throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Invalid or missing API key');
+    throw new AppException(
+      ERROR_CODES.UNAUTHORIZED,
+      401,
+      'Invalid or missing API key',
+    );
   }
 }

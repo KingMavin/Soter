@@ -1,5 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 
 export type ImportRowStatus = 'valid' | 'warning' | 'error';
@@ -59,7 +59,11 @@ export class RecipientsService {
    */
   validateImport(csvText: string): ImportValidationOutcome {
     if (typeof csvText !== 'string' || csvText.trim().length === 0) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'The uploaded CSV file is empty.');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'The uploaded CSV file is empty.',
+      );
     }
 
     const lines = csvText
@@ -75,7 +79,10 @@ export class RecipientsService {
       .filter(Boolean);
 
     if (headers.length === 0) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'The uploaded CSV file is missing a header row.',
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'The uploaded CSV file is missing a header row.',
       );
     }
 

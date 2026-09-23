@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -50,7 +45,10 @@ export class RetentionPolicyService {
       where: { entity: dto.entity },
     });
     if (existing) {
-      throw new AppException(ERROR_CODES.CONFLICT, 409, `Retention policy for entity "${dto.entity}" already exists`,
+      throw new AppException(
+        ERROR_CODES.CONFLICT,
+        409,
+        `Retention policy for entity "${dto.entity}" already exists`,
       );
     }
 
@@ -76,7 +74,11 @@ export class RetentionPolicyService {
       where: { id },
     });
     if (!policy) {
-      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Retention policy "${id}" not found`);
+      throw new AppException(
+        ERROR_CODES.NOT_FOUND,
+        404,
+        `Retention policy "${id}" not found`,
+      );
     }
     return policy;
   }

@@ -3,7 +3,7 @@ import { SandboxService } from './sandbox.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { ConfigService } from '@nestjs/config';
-import { ForbiddenException } from '@nestjs/common';
+
 import {
   DEMO_TENANT_SEED,
   DEMO_CAMPAIGN_SEEDS,

@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from './roles.decorator';
@@ -27,7 +22,11 @@ export class RolesGuard implements CanActivate {
     const role = request.user?.role;
 
     if (!role || !requiredRoles.includes(role)) {
-      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: insufficient role');
+      throw new AppException(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'Access denied: insufficient role',
+      );
     }
 
     return true;

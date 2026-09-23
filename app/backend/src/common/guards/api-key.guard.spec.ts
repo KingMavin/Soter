@@ -1,5 +1,5 @@
 import { ApiKeyGuard } from './api-key.guard';
-import { UnauthorizedException } from '@nestjs/common';
+
 import { AppRole } from '../../auth/app-role.enum';
 import { ApiKeyScope } from '../../api-keys/api-key-scope.enum';
 

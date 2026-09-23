@@ -6,7 +6,6 @@ import {
   Query,
   Req,
   Sse,
-  UnauthorizedException,
   Version,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -82,7 +81,10 @@ export class VerificationInboxSseController {
   ): Observable<MessageEvent> {
     const reviewerId = req.user?.apiKeyId ?? req.user?.sub;
     if (!reviewerId) {
-      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'An authenticated reviewer is required to stream the inbox',
+      throw new AppException(
+        ERROR_CODES.UNAUTHORIZED,
+        401,
+        'An authenticated reviewer is required to stream the inbox',
       );
     }
 

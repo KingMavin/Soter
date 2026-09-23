@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../../common/dto/error-response.dto';
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Request } from 'express';
 import { HmacService } from '../hmac/hmac.service';
 
@@ -24,7 +19,11 @@ export class WebhookHmacGuard implements CanActivate {
 
     const signature = req.headers['x-signature-256'];
     if (typeof signature !== 'string' || !signature) {
-      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Missing webhook signature');
+      throw new AppException(
+        ERROR_CODES.UNAUTHORIZED,
+        401,
+        'Missing webhook signature',
+      );
     }
 
     const rawBody =
@@ -32,7 +31,11 @@ export class WebhookHmacGuard implements CanActivate {
       (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
 
     if (!this.hmac.verify(rawBody, signature)) {
-      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Invalid webhook signature');
+      throw new AppException(
+        ERROR_CODES.UNAUTHORIZED,
+        401,
+        'Invalid webhook signature',
+      );
     }
 
     return true;

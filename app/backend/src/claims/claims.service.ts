@@ -1,12 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-  Optional,
-  Inject,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Optional, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
@@ -218,7 +211,10 @@ export class ClaimsService {
     }
 
     if (claim.status !== ClaimStatus.approved) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot transition from ${claim.status} to ${ClaimStatus.disbursed}`,
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        `Cannot transition from ${claim.status} to ${ClaimStatus.disbursed}`,
       );
     }
 
@@ -500,7 +496,10 @@ export class ClaimsService {
       throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
     }
     if (claim.status !== fromStatus) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot transition from ${claim.status} to ${toStatus}`,
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        `Cannot transition from ${claim.status} to ${toStatus}`,
       );
     }
 
@@ -816,10 +815,18 @@ export class ClaimsService {
 
     if (query.from || query.to) {
       if (query.from && isNaN(Date.parse(query.from))) {
-        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'from' date: ${query.from}`);
+        throw new AppException(
+          ERROR_CODES.BAD_REQUEST,
+          400,
+          `Invalid 'from' date: ${query.from}`,
+        );
       }
       if (query.to && isNaN(Date.parse(query.to))) {
-        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'to' date: ${query.to}`);
+        throw new AppException(
+          ERROR_CODES.BAD_REQUEST,
+          400,
+          `Invalid 'to' date: ${query.to}`,
+        );
       }
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);

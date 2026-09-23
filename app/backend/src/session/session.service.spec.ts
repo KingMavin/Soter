@@ -7,11 +7,6 @@ import {
   VerificationSessionStatus,
   SessionStepStatus,
 } from '@prisma/client';
-import {
-  NotFoundException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
 
 describe('SessionService', () => {
   let service: SessionService;

@@ -1,10 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
 /**
  * SandboxGuard gates all sandbox endpoints behind the SANDBOX_ENABLED environment variable.
@@ -19,7 +14,10 @@ import {
 export class SandboxGuard implements CanActivate {
   canActivate(_context: ExecutionContext): boolean {
     if (process.env.SANDBOX_ENABLED !== 'true') {
-      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Sandbox endpoints are disabled. Set SANDBOX_ENABLED=true to enable.',
+      throw new AppException(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'Sandbox endpoints are disabled. Set SANDBOX_ENABLED=true to enable.',
       );
     }
     return true;

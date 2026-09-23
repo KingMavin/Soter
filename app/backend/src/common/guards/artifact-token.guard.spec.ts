@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { ArtifactTokenGuard } from './artifact-token.guard';
 import { ArtifactOwnershipTokenService } from '../../evidence/artifact-ownership-token.service';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 
 describe('ArtifactTokenGuard', () => {
   let guard: ArtifactTokenGuard;

@@ -10,7 +10,6 @@ import {
   Request,
   Res,
   Version,
-  ForbiddenException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { Request as ExpressRequest } from 'express';
@@ -58,7 +57,8 @@ export class ClaimsController {
   ) {}
 
   private ensureOrgAccess(user: any, claim: any) {
-    if (!user) throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Not authenticated');
+    if (!user)
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Not authenticated');
     // Admins bypass this check
     if (user.role === AppRole.admin) return;
     // Only NGO role is org-scoped for this guard
@@ -68,7 +68,10 @@ export class ClaimsController {
     if (!claimOrgId) return; // nothing to check
 
     if (!user.ngoId || user.ngoId !== claimOrgId) {
-      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: resource belongs to a different organization',
+      throw new AppException(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'Access denied: resource belongs to a different organization',
       );
     }
   }

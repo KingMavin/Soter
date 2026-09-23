@@ -335,21 +335,20 @@ describe('SorobanTransactionLifecycleService - Stuck Detection', () => {
 
       await service.executeTransaction('tx-recover');
 
-      expect(mockPrismaService.sorobanTransaction.update).toHaveBeenNthCalledWith(
-        2,
-        {
-          where: { id: 'tx-recover' },
-          data: {
-            status: SorobanTransactionStatus.confirmed,
-            txHash: 'tx-hash-success',
-            confirmedAt: expect.any(Date),
-            attemptCount: 2,
-            lastRetryAt: expect.any(Date),
-            lastError: null,
-            errorType: null,
-          },
+      expect(
+        mockPrismaService.sorobanTransaction.update,
+      ).toHaveBeenNthCalledWith(2, {
+        where: { id: 'tx-recover' },
+        data: {
+          status: SorobanTransactionStatus.confirmed,
+          txHash: 'tx-hash-success',
+          confirmedAt: expect.any(Date),
+          attemptCount: 2,
+          lastRetryAt: expect.any(Date),
+          lastError: null,
+          errorType: null,
         },
-      );
+      });
     });
 
     it('should transition from submitted to confirmed without stuck detection', async () => {
@@ -372,21 +371,20 @@ describe('SorobanTransactionLifecycleService - Stuck Detection', () => {
 
       await service.executeTransaction('tx-submitted');
 
-      expect(mockPrismaService.sorobanTransaction.update).toHaveBeenNthCalledWith(
-        2,
-        {
-          where: { id: 'tx-submitted' },
-          data: {
-            status: SorobanTransactionStatus.confirmed,
-            txHash: 'tx-hash-disburse',
-            confirmedAt: expect.any(Date),
-            attemptCount: 2,
-            lastRetryAt: expect.any(Date),
-            lastError: null,
-            errorType: null,
-          },
+      expect(
+        mockPrismaService.sorobanTransaction.update,
+      ).toHaveBeenNthCalledWith(2, {
+        where: { id: 'tx-submitted' },
+        data: {
+          status: SorobanTransactionStatus.confirmed,
+          txHash: 'tx-hash-disburse',
+          confirmedAt: expect.any(Date),
+          attemptCount: 2,
+          lastRetryAt: expect.any(Date),
+          lastError: null,
+          errorType: null,
         },
-      );
+      });
     });
   });
 });

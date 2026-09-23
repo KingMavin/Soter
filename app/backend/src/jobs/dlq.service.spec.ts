@@ -3,7 +3,7 @@ import { DlqService } from './dlq.service';
 import { getQueueToken } from '@nestjs/bullmq';
 import { RETENTION_PURGE_QUEUE } from '../retention-policy/retention-purge.processor';
 import { AuditService } from '../audit/audit.service';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+
 import { Job } from 'bullmq';
 
 describe('DlqService', () => {

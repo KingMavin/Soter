@@ -1,5 +1,5 @@
 import { AppException } from '../../common/dto/error-response.dto';
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ExecutionContext } from '@nestjs/common';
 import { AppRole } from '../../auth/app-role.enum';
 import { OrgOwnershipGuard } from './org-ownership.guard';
 

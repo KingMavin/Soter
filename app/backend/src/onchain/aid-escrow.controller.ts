@@ -9,7 +9,6 @@ import {
   HttpStatus,
   Req,
   Query,
-  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
@@ -169,7 +168,10 @@ export class AidEscrowController {
     @Req() req: Request & { user?: { address?: string } },
   ): Promise<any> {
     if (dto.recipientAddresses.length !== dto.amounts.length) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Recipients and amounts arrays must have the same length',
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Recipients and amounts arrays must have the same length',
       );
     }
 
@@ -224,7 +226,11 @@ export class AidEscrowController {
   ): Promise<any> {
     const recipientAddress = req.user?.address;
     if (!recipientAddress) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Recipient address required');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Recipient address required',
+      );
     }
 
     try {
@@ -408,7 +414,11 @@ export class AidEscrowController {
   })
   async getTransactionStatus(@Param('hash') hash: string): Promise<any> {
     if (!hash || hash.length < 10) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Invalid transaction hash');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Invalid transaction hash',
+      );
     }
     try {
       return await this.aidEscrowService.getTransactionStatus(hash);
@@ -505,7 +515,11 @@ export class AidEscrowController {
   })
   async correlateTransaction(@Param('txHash') txHash: string): Promise<any> {
     if (!txHash || txHash.length < 10) {
-      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Invalid transaction hash');
+      throw new AppException(
+        ERROR_CODES.BAD_REQUEST,
+        400,
+        'Invalid transaction hash',
+      );
     }
     try {
       return await this.eventCorrelationService.correlateTransaction(

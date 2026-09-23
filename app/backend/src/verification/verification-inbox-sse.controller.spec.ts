@@ -49,9 +49,7 @@ describe('VerificationInboxSseController', () => {
 
   it('rejects unauthenticated connections', () => {
     expect(() => controller.stream({})).toThrow(AppException);
-    expect(() => controller.stream({ user: null })).toThrow(
-      AppException,
-    );
+    expect(() => controller.stream({ user: null })).toThrow(AppException);
   });
 
   it('emits review updates as SSE messages with id, type and JSON data', async () => {

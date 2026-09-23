@@ -72,9 +72,7 @@ describe('RecipientsService', () => {
 
     it('rejects empty input', () => {
       expect(() => service.validateImport('')).toThrow(AppException);
-      expect(() => service.validateImport('   \n  ')).toThrow(
-        AppException,
-      );
+      expect(() => service.validateImport('   \n  ')).toThrow(AppException);
     });
 
     it('rejects files without headers', () => {

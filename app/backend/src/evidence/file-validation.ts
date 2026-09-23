@@ -1,5 +1,5 @@
 import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
-import { PayloadTooLargeException } from '@nestjs/common';
+import { PayloadTooLargeException, BadRequestException } from '@nestjs/common';
 import type { Request } from 'express';
 import * as path from 'path';
 

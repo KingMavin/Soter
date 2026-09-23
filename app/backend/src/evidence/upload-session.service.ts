@@ -207,7 +207,7 @@ export class UploadSessionService {
         size: assembled.length,
         buffer: assembled,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       await this.store.updateSessionStatus(
         sessionId,
         UploadSessionStatus.aborted,

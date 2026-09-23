@@ -1,6 +1,5 @@
-import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
-import { AppException } from '../common/dto/error-response.dto';
 import { PayloadTooLargeException } from '@nestjs/common';
+import { AppException } from '../common/dto/error-response.dto';
 import { Readable } from 'stream';
 import {
   ALLOWED_EXTENSIONS,
@@ -217,7 +216,7 @@ describe('evidenceFileFilter', () => {
       originalname: 'evil.exe',
       mimetype: 'text/plain',
     });
-    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err).toBeInstanceOf(AppException);
     expect(accept).toBe(false);
   });
 
@@ -226,7 +225,7 @@ describe('evidenceFileFilter', () => {
       originalname: 'note.txt',
       mimetype: 'application/x-msdownload',
     });
-    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err).toBeInstanceOf(AppException);
     expect(accept).toBe(false);
   });
 
@@ -235,7 +234,7 @@ describe('evidenceFileFilter', () => {
       originalname: '../escape.txt',
       mimetype: 'text/plain',
     });
-    expect(err).toBeInstanceOf(BadRequestException);
+    expect(err).toBeInstanceOf(AppException);
     expect(accept).toBe(false);
   });
 });

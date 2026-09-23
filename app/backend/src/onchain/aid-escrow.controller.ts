@@ -45,7 +45,7 @@ export class AidEscrowController {
   private requireUserAddress(req: Request): string {
     const address = req.user?.address;
     if (!address) {
-      throw new BadRequestException('Recipient address is required');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Recipient address is required');
     }
     return address;
   }

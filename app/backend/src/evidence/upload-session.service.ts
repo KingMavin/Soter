@@ -309,7 +309,13 @@ export class UploadSessionService {
         404,
         'Upload session not found',
       );
-    if (session.ownerId !== ownerId) throw new ForbiddenException();
+    if (session.ownerId !== ownerId) {
+      throw new AppException(
+        ERROR_CODES.FORBIDDEN,
+        403,
+        'You do not have access to this upload session',
+      );
+    }
     if (session.status !== UploadSessionStatus.active) {
       throw new AppException(
         ERROR_CODES.BAD_REQUEST,

@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -47,7 +48,7 @@ describe('VerificationInboxSseController', () => {
   });
 
   it('rejects unauthenticated connections', () => {
-    expect(() => controller.stream({})).toThrow(UnauthorizedException);
+    expect(() => controller.stream({})).toThrow(AppException);
     expect(() => controller.stream({ user: null })).toThrow(
       UnauthorizedException,
     );

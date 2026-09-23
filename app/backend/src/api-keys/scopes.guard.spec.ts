@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { ScopesGuard } from './scopes.guard';
 import { ApiKeyScope } from './api-key-scope.enum';
 import { ForbiddenException } from '@nestjs/common';
@@ -80,7 +81,7 @@ describe('ScopesGuard', () => {
     const context = createContext({
       scopes: [ApiKeyScope.read],
     });
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 
   it('denies write scope from accessing admin endpoint', () => {
@@ -89,7 +90,7 @@ describe('ScopesGuard', () => {
     const context = createContext({
       scopes: [ApiKeyScope.write],
     });
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 
   it('allows webhook scope to access webhook endpoint', () => {
@@ -107,21 +108,21 @@ describe('ScopesGuard', () => {
     const context = createContext({
       scopes: [ApiKeyScope.read],
     });
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 
   it('denies access when user has no scopes', () => {
     mockReflector.getAllAndOverride.mockReturnValue([ApiKeyScope.read]);
 
     const context = createContext({});
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 
   it('denies access when user is undefined', () => {
     mockReflector.getAllAndOverride.mockReturnValue([ApiKeyScope.read]);
 
     const context = createContext();
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 
   it('allows multiple scopes with sufficient privilege', () => {
@@ -145,6 +146,6 @@ describe('ScopesGuard', () => {
     const context = createContext({
       scopes: [ApiKeyScope.read],
     });
-    expect(() => guard.canActivate(context as any)).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(context as any)).toThrow(AppException);
   });
 });

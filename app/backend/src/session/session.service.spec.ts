@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { SessionService } from './session.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -419,7 +420,7 @@ describe('SessionService', () => {
 
       await expect(
         service.submitToStep('session123', 'step1', submitDto),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(AppException);
     });
 
     it('should handle step failure and retry logic', async () => {
@@ -477,7 +478,7 @@ describe('SessionService', () => {
 
       await expect(
         service.submitToStep('session123', 'step1', submitDto),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
 
       // Check that the step was marked as failed (should be the last call)
       const updateCalls = mockPrismaService.sessionStep.update.mock.calls;

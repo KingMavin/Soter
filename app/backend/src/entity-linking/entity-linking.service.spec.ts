@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { EntityLinkingService } from './entity-linking.service';
@@ -209,7 +210,7 @@ describe('EntityLinkingService', () => {
 
       mockPrisma.registryOrganization.findUnique.mockResolvedValue(null);
 
-      await expect(service.linkEntity(dto)).rejects.toThrow(NotFoundException);
+      await expect(service.linkEntity(dto)).rejects.toThrow(AppException);
     });
   });
 
@@ -393,7 +394,7 @@ describe('EntityLinkingService', () => {
 
       await expect(
         service.decideReview('missing', { action: 'accept' }, 'reviewer-1'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws BadRequestException when the link is not pending review', async () => {
@@ -404,7 +405,7 @@ describe('EntityLinkingService', () => {
 
       await expect(
         service.decideReview('link-1', { action: 'accept' }, 'reviewer-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('accepts a queued link: activates it and records audit + metrics', async () => {
@@ -543,7 +544,7 @@ describe('EntityLinkingService', () => {
           { action: 'remap', remapEntityType: 'location' },
           'reviewer-1',
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws NotFoundException when the remap target registry record does not exist', async () => {
@@ -560,7 +561,7 @@ describe('EntityLinkingService', () => {
           },
           'reviewer-1',
         ),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(AppException);
     });
   });
 

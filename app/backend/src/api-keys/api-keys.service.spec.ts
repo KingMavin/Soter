@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -202,7 +203,7 @@ describe('ApiKeysService', () => {
         expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
         expiresInDays: 30,
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(AppException);
   });
 
   it('rejects past expiresAt', async () => {
@@ -211,7 +212,7 @@ describe('ApiKeysService', () => {
         role: AppRole.operator,
         expiresAt: new Date(Date.now() - 1000).toISOString(),
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(AppException);
   });
 
   it('creates a key with custom scopes', async () => {

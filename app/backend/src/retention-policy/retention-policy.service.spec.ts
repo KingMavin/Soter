@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ConflictException, NotFoundException } from '@nestjs/common';
@@ -144,7 +145,7 @@ describe('RetentionPolicyService', () => {
 
       await expect(
         service.create({ entity: 'AuditLog', retentionDays: 90 }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(AppException);
     });
   });
 

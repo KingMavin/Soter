@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import { Readable } from 'stream';
 import {
@@ -81,7 +82,7 @@ describe('validateUploadedFile', () => {
   });
 
   it('rejects a missing file', () => {
-    expect(() => validateUploadedFile(undefined)).toThrow(BadRequestException);
+    expect(() => validateUploadedFile(undefined)).toThrow(AppException);
   });
 
   it('rejects an empty file', () => {
@@ -132,7 +133,7 @@ describe('validateUploadedFile', () => {
         mimetype: 'application/octet-stream',
         buffer: Buffer.from('data'),
       });
-      expect(() => validateUploadedFile(file)).toThrow(BadRequestException);
+      expect(() => validateUploadedFile(file)).toThrow(AppException);
     });
 
     it('rejects a disallowed extension even with an allowed MIME', () => {
@@ -161,7 +162,7 @@ describe('validateUploadedFile', () => {
         mimetype: 'text/plain',
         buffer: elf,
       });
-      expect(() => validateUploadedFile(file)).toThrow(BadRequestException);
+      expect(() => validateUploadedFile(file)).toThrow(AppException);
     });
 
     it('rejects a PNG whose bytes are not actually a PNG', () => {

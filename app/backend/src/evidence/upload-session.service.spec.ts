@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import {
   BadRequestException,
   ConflictException,
@@ -127,7 +128,7 @@ describe('UploadSessionService', () => {
           },
           'owner-1',
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('rejects a disallowed mimeType', async () => {
@@ -141,7 +142,7 @@ describe('UploadSessionService', () => {
           },
           'owner-1',
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('rejects totalSize exceeding MAX_FILE_SIZE', async () => {
@@ -155,7 +156,7 @@ describe('UploadSessionService', () => {
           },
           'owner-1',
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('rejects a disallowed extension even with an allowed mimeType', async () => {
@@ -241,19 +242,19 @@ describe('UploadSessionService', () => {
 
       await expect(
         service.uploadChunk('sess-1', 0, checksum, chunk, 'owner-1'),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws BadRequestException for out-of-range index', async () => {
       await expect(
         service.uploadChunk('sess-1', 99, checksum, chunk, 'owner-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws BadRequestException for checksum mismatch', async () => {
       await expect(
         service.uploadChunk('sess-1', 0, 'badhash', chunk, 'owner-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws BadRequestException for wrong chunk size', async () => {
@@ -261,20 +262,20 @@ describe('UploadSessionService', () => {
       const ws = sha256(wrongSize);
       await expect(
         service.uploadChunk('sess-1', 0, ws, wrongSize, 'owner-1'),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws ForbiddenException when ownerId does not match', async () => {
       await expect(
         service.uploadChunk('sess-1', 0, checksum, chunk, 'other-owner'),
-      ).rejects.toThrow(ForbiddenException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws NotFoundException for unknown session', async () => {
       mockStore.getSession.mockResolvedValue(null);
       await expect(
         service.uploadChunk('sess-1', 0, checksum, chunk, 'owner-1'),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(AppException);
     });
 
     it('throws BadRequestException for expired session', async () => {

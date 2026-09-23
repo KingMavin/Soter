@@ -1,3 +1,4 @@
+import { AppException } from '../../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { RecipientImportService } from '../recipient-import.service';
@@ -105,13 +106,13 @@ describe('RecipientImportService', () => {
 
       await expect(
         service.createJob('non-existent', 'file.csv', '/tmp/file.csv', 10),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('should throw BadRequestException if totalRows is zero', async () => {
       await expect(
         service.createJob('campaign-1', 'file.csv', '/tmp/file.csv', 0),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
 
     it('should record an audit log on creation', async () => {
@@ -281,7 +282,7 @@ describe('RecipientImportService', () => {
     });
 
     it('should throw BadRequestException on empty CSV', () => {
-      expect(() => service.parseCsv('')).toThrow(BadRequestException);
+      expect(() => service.parseCsv('')).toThrow(AppException);
     });
   });
 

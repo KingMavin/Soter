@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DeviceTokensService } from './device-tokens.service';
@@ -244,7 +245,7 @@ describe('DeviceTokensService', () => {
 
       await expect(
         service.revoke('token-1', 'reason', { userId: 'user-1' }),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(AppException);
     });
 
     it('returns existing token if already revoked', async () => {

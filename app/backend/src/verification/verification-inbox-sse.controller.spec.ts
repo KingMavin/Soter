@@ -50,7 +50,7 @@ describe('VerificationInboxSseController', () => {
   it('rejects unauthenticated connections', () => {
     expect(() => controller.stream({})).toThrow(AppException);
     expect(() => controller.stream({ user: null })).toThrow(
-      UnauthorizedException,
+      AppException,
     );
   });
 

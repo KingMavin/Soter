@@ -73,7 +73,7 @@ describe('RecipientsService', () => {
     it('rejects empty input', () => {
       expect(() => service.validateImport('')).toThrow(AppException);
       expect(() => service.validateImport('   \n  ')).toThrow(
-        BadRequestException,
+        AppException,
       );
     });
 

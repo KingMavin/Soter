@@ -24,7 +24,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U soter -d soter_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -79,7 +79,7 @@ jobs:
         run: pnpm --filter backend run lint
 
       - name: Test
-        run: pnpm --filter backend run test
+        run: pnpm --filter backend run test -- --runInBand
         env:
           DATABASE_URL: postgresql://soter:soter@localhost:5432/soter_test
 
@@ -101,7 +101,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U soter -d soter_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

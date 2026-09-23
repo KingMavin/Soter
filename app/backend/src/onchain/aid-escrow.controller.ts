@@ -42,6 +42,14 @@ import { SorobanEventCorrelationService } from './soroban-event-correlation.serv
 @ApiBearerAuth('JWT-auth')
 @Controller('onchain/aid-escrow')
 export class AidEscrowController {
+  private requireUserAddress(req: Request): string {
+    const address = req.user?.address;
+    if (!address) {
+      throw new BadRequestException('Recipient address is required');
+    }
+    return address;
+  }
+
   private readonly logger = new Logger(AidEscrowController.name);
   private readonly errorMapper = new SorobanErrorMapper();
 

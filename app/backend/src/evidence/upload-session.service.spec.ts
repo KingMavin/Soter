@@ -327,7 +327,7 @@ describe('UploadSessionService', () => {
       });
       (fsPromises.unlink as jest.Mock).mockResolvedValue(undefined);
       await expect(service.finalize('sess-1', 'owner-1')).rejects.toThrow(
-        ConflictException,
+        AppException,
       );
     });
 

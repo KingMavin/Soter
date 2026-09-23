@@ -134,9 +134,7 @@ describe('DeviceTokensService', () => {
         token: 'apns-token-abc',
       };
 
-      await expect(service.register(dto, {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.register(dto, {})).rejects.toThrow(AppException);
     });
   });
 
@@ -198,7 +196,7 @@ describe('DeviceTokensService', () => {
       mockPrisma.deviceNotificationToken.findFirst.mockResolvedValue(null);
 
       await expect(service.get('token-1', 'user-1')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
   });
@@ -289,7 +287,7 @@ describe('DeviceTokensService', () => {
       mockPrisma.deviceNotificationToken.findFirst.mockResolvedValue(null);
 
       await expect(service.delete('token-1', 'user-1')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
   });
@@ -315,7 +313,7 @@ describe('DeviceTokensService', () => {
       mockPrisma.deviceNotificationToken.findFirst.mockResolvedValue(null);
 
       await expect(service.updateLastUsed('token-1', 'user-1')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
   });

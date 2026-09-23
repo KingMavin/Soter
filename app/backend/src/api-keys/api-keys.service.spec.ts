@@ -247,7 +247,7 @@ describe('ApiKeysService', () => {
 
   it('requires ngoId for NGO role', async () => {
     await expect(service.create({ role: AppRole.ngo }, {})).rejects.toThrow(
-      BadRequestException,
+      AppException,
     );
   });
 
@@ -295,7 +295,7 @@ describe('ApiKeysService', () => {
     it('throws NotFound if id missing', async () => {
       mockPrisma.apiKey.findUnique.mockResolvedValue(null);
       await expect(service.revoke('missing', undefined, {})).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
 
@@ -350,9 +350,7 @@ describe('ApiKeysService', () => {
         }),
       );
 
-      await expect(service.rotate('missing', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.rotate('missing', {})).rejects.toThrow(AppException);
     });
 
     it('rejects rotation of revoked keys', async () => {
@@ -372,9 +370,7 @@ describe('ApiKeysService', () => {
         }),
       );
 
-      await expect(service.rotate('k1', {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.rotate('k1', {})).rejects.toThrow(AppException);
     });
 
     it('creates a replacement and keeps the old key valid during the grace window', async () => {

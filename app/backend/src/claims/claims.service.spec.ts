@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '@nestjs/config';
@@ -420,7 +421,7 @@ describe('ClaimsService', () => {
       jest.spyOn(prismaService.claim, 'findUnique').mockResolvedValue(null);
 
       await expect(service.disburse('non-existent')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
 
@@ -433,9 +434,7 @@ describe('ClaimsService', () => {
         .spyOn(prismaService.claim, 'findUnique')
         .mockResolvedValue(unapprovedClaim);
 
-      await expect(service.disburse('claim-123')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.disburse('claim-123')).rejects.toThrow(AppException);
     });
   });
 
@@ -565,9 +564,9 @@ describe('ClaimsService', () => {
     });
 
     it('countExport(): rejects an invalid date filter', async () => {
-      await expect(
-        service.countExport({ from: 'not-a-date' }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.countExport({ from: 'not-a-date' })).rejects.toThrow(
+        AppException,
+      );
     });
 
     it('streamExportRows(): pages through results with cursor-based pagination', async () => {

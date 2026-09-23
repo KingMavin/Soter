@@ -193,9 +193,7 @@ describe('EntityLinkingService', () => {
         confidenceScore: 1.5, // Invalid: > 1
       };
 
-      await expect(service.linkEntity(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.linkEntity(dto)).rejects.toThrow(AppException);
     });
 
     it('should throw NotFoundException for non-existent registry ID', async () => {

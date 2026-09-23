@@ -1,3 +1,4 @@
+import { AppException } from '../dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
 import { ArtifactTokenGuard } from './artifact-token.guard';
@@ -129,7 +130,7 @@ describe('ArtifactTokenGuard', () => {
 
       const context = createContext({});
       await expect(guard.canActivate(context as any)).rejects.toThrow(
-        UnauthorizedException,
+        AppException,
       );
     });
   });
@@ -144,7 +145,7 @@ describe('ArtifactTokenGuard', () => {
 
       const context = createContext({ authorization: 'Bearer invalid-token' });
       await expect(guard.canActivate(context as any)).rejects.toThrow(
-        UnauthorizedException,
+        AppException,
       );
     });
 
@@ -157,7 +158,7 @@ describe('ArtifactTokenGuard', () => {
 
       const context = createContext({ authorization: 'Bearer expired-token' });
       await expect(guard.canActivate(context as any)).rejects.toThrow(
-        UnauthorizedException,
+        AppException,
       );
     });
 
@@ -170,7 +171,7 @@ describe('ArtifactTokenGuard', () => {
 
       const context = createContext({ authorization: 'Bearer revoked-token' });
       await expect(guard.canActivate(context as any)).rejects.toThrow(
-        UnauthorizedException,
+        AppException,
       );
     });
   });
@@ -182,7 +183,7 @@ describe('ArtifactTokenGuard', () => {
 
       const context = createContext({ authorization: 'Bearer valid-token' });
       await expect(guard.canActivate(context as any)).rejects.toThrow(
-        ForbiddenException,
+        AppException,
       );
     });
 
@@ -225,7 +226,7 @@ describe('ArtifactTokenGuard', () => {
 
         const context = createContext({ authorization: 'Bearer valid-token' });
         await expect(guard.canActivate(context as any)).rejects.toThrow(
-          ForbiddenException,
+          AppException,
         );
       },
     );

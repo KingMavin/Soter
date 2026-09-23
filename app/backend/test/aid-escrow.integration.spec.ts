@@ -1,3 +1,4 @@
+import { AppException } from '../src/common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AidEscrowService } from '../src/onchain/aid-escrow.service';
@@ -11,7 +12,6 @@ import {
   ClaimAidPackageDto,
 } from '../src/onchain/dto/aid-escrow.dto';
 import { ONCHAIN_ADAPTER_TOKEN } from '../src/onchain/onchain.adapter';
-import { BadRequestException } from '@nestjs/common';
 import { SorobanEventCorrelationService } from '../src/onchain/soroban-event-correlation.service';
 import { Request } from 'express';
 
@@ -498,7 +498,7 @@ describe('AidEscrow Integration Tests', () => {
 
       await expect(
         controller.claimAidPackage('pkg-001', req as Request),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(AppException);
     });
   });
 

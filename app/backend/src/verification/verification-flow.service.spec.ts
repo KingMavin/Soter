@@ -208,7 +208,7 @@ describe('VerificationFlowService', () => {
       });
 
       await expect(service.resend({ sessionId: 'session-1' })).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
     });
 
@@ -219,7 +219,7 @@ describe('VerificationFlowService', () => {
       });
 
       await expect(service.resend({ sessionId: 'session-1' })).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
       await expect(service.resend({ sessionId: 'session-1' })).rejects.toThrow(
         'Session expired',
@@ -233,7 +233,7 @@ describe('VerificationFlowService', () => {
       });
 
       await expect(service.resend({ sessionId: 'session-1' })).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
       await expect(service.resend({ sessionId: 'session-1' })).rejects.toThrow(
         'Maximum resend limit',

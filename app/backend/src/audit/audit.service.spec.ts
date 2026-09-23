@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AuditService } from './audit.service';
@@ -143,13 +144,13 @@ describe('AuditService', () => {
 
     it('should throw BadRequestException for invalid from date', async () => {
       await expect(service.exportLogs({ from: 'not-a-date' })).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
     });
 
     it('should throw BadRequestException for invalid to date', async () => {
       await expect(service.exportLogs({ to: 'not-a-date' })).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
     });
   });

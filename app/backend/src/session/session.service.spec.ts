@@ -165,7 +165,7 @@ describe('SessionService', () => {
       };
 
       await expect(service.createSession(createDto)).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
     });
   });
@@ -205,7 +205,7 @@ describe('SessionService', () => {
       mockPrismaService.session.findUnique.mockResolvedValue(null);
 
       await expect(service.getSession('nonexistent')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
 
@@ -548,7 +548,7 @@ describe('SessionService', () => {
       mockPrismaService.session.findUnique.mockResolvedValue(completedSession);
 
       await expect(service.resumeSession('session123')).rejects.toThrow(
-        BadRequestException,
+        AppException,
       );
     });
   });

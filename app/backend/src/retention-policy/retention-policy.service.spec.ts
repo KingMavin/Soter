@@ -176,9 +176,7 @@ describe('RetentionPolicyService', () => {
 
     it('should throw NotFoundException if not found', async () => {
       prisma.retentionPolicy.findUnique.mockResolvedValue(null);
-      await expect(service.findOne('missing')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('missing')).rejects.toThrow(AppException);
     });
   });
 

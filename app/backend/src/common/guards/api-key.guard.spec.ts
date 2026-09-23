@@ -1,3 +1,4 @@
+import { AppException } from '../dto/error-response.dto';
 import { ApiKeyGuard } from './api-key.guard';
 
 import { AppRole } from '../../auth/app-role.enum';
@@ -138,7 +139,7 @@ describe('ApiKeyGuard', () => {
   it('should throw UnauthorizedException with missing API key', async () => {
     const context = createContext({});
     await expect(guard.canActivate(context as any)).rejects.toThrow(
-      UnauthorizedException,
+      AppException,
     );
   });
 
@@ -148,7 +149,7 @@ describe('ApiKeyGuard', () => {
 
     const context = createContext({ 'x-api-key': 'wrong-key' });
     await expect(guard.canActivate(context as any)).rejects.toThrow(
-      UnauthorizedException,
+      AppException,
     );
   });
 

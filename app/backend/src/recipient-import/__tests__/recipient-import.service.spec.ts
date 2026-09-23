@@ -166,7 +166,7 @@ describe('RecipientImportService', () => {
       (prismaService.importJob.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.getJobStatus('non-existent')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
 
@@ -463,7 +463,7 @@ describe('RecipientImportService', () => {
       (prismaService.importJob.findUnique as jest.Mock).mockResolvedValue(null);
 
       await expect(service.generateReportCsv('non-existent')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
   });

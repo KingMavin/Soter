@@ -1,3 +1,4 @@
+import { AppException } from '../common/dto/error-response.dto';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { OutboxController } from './outbox.controller';
@@ -94,7 +95,7 @@ describe('OutboxController', () => {
       notificationsServiceMock.getOutboxRecord.mockResolvedValueOnce(null);
 
       await expect(controller.getOne('non-existent')).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
     });
 

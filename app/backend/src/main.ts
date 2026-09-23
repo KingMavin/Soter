@@ -52,7 +52,7 @@ async function bootstrap() {
         res,
         buf,
       ) => {
-        req["rawBody"] = buf;
+        req['rawBody'] = buf;
       },
     }),
   );

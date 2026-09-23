@@ -102,7 +102,7 @@ jobs:
         run: pnpm --filter backend run lint
 
       - name: Test
-        run: pnpm --filter backend run test -- --runInBand
+        run: pnpm --filter backend exec jest --runInBand
         env:
           DATABASE_URL: postgresql://soter:soter@localhost:5432/soter_test
           REDIS_HOST: localhost

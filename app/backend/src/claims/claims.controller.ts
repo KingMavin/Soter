@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Controller,
   Get,
@@ -57,7 +58,7 @@ export class ClaimsController {
   ) {}
 
   private ensureOrgAccess(user: any, claim: any) {
-    if (!user) throw new ForbiddenException('Not authenticated');
+    if (!user) throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Not authenticated');
     // Admins bypass this check
     if (user.role === AppRole.admin) return;
     // Only NGO role is org-scoped for this guard
@@ -67,8 +68,7 @@ export class ClaimsController {
     if (!claimOrgId) return; // nothing to check
 
     if (!user.ngoId || user.ngoId !== claimOrgId) {
-      throw new ForbiddenException(
-        'Access denied: resource belongs to a different organization',
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: resource belongs to a different organization',
       );
     }
   }

@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import { BadRequestException, PayloadTooLargeException } from '@nestjs/common';
 import type { Request } from 'express';
 import * as path from 'path';
@@ -172,15 +173,13 @@ export function validateExtensionForMime(
 ): string {
   const ext = path.extname(filename).toLowerCase();
   if (!ext || !(ALLOWED_EXTENSIONS as readonly string[]).includes(ext)) {
-    throw new BadRequestException(
-      `Invalid file extension: ${ext || '(none)'}. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid file extension: ${ext || '(none)'}. Allowed extensions: ${ALLOWED_EXTENSIONS.join(', ')}`,
     );
   }
 
   const allowedForExt = EXTENSION_MIME_MAP[ext] ?? [];
   if (!allowedForExt.includes(mimetype)) {
-    throw new BadRequestException(
-      `Declared MIME type ${mimetype} does not match extension ${ext}`,
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Declared MIME type ${mimetype} does not match extension ${ext}`,
     );
   }
 
@@ -214,7 +213,7 @@ export function validateFileContent(input: FileContent): ValidatedFile {
   const { filename, mimetype, size, buffer } = input;
 
   if (!buffer || size === 0 || buffer.length === 0) {
-    throw new BadRequestException('Uploaded file is empty');
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Uploaded file is empty');
   }
 
   if (size > MAX_FILE_SIZE) {
@@ -224,12 +223,11 @@ export function validateFileContent(input: FileContent): ValidatedFile {
   }
 
   if (!isSafeFilename(filename)) {
-    throw new BadRequestException('Invalid filename');
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Invalid filename');
   }
 
   if (!(ALLOWED_MIME_TYPES as readonly string[]).includes(mimetype)) {
-    throw new BadRequestException(
-      `Invalid MIME type: ${mimetype}. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid MIME type: ${mimetype}. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
     );
   }
 
@@ -250,7 +248,7 @@ export function validateUploadedFile(
   file: Express.Multer.File | undefined,
 ): ValidatedFile {
   if (!file) {
-    throw new BadRequestException('No file uploaded');
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'No file uploaded');
   }
 
   return validateFileContent({
@@ -273,16 +271,14 @@ function assertContentMatchesType(mimetype: string, buffer: Buffer): void {
     // contain a NUL byte in its leading bytes (a strong binary indicator).
     for (const sig of MAGIC_SIGNATURES) {
       if (startsWith(buffer, sig.bytes)) {
-        throw new BadRequestException(
-          'File contents do not match the declared text/plain type',
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'File contents do not match the declared text/plain type',
         );
       }
     }
     const sampleLen = Math.min(buffer.length, 512);
     for (let i = 0; i < sampleLen; i++) {
       if (buffer[i] === 0x00) {
-        throw new BadRequestException(
-          'File contents do not match the declared text/plain type',
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'File contents do not match the declared text/plain type',
         );
       }
     }
@@ -291,8 +287,7 @@ function assertContentMatchesType(mimetype: string, buffer: Buffer): void {
 
   const signature = MAGIC_SIGNATURES.find(s => s.mime === mimetype);
   if (signature && !startsWith(buffer, signature.bytes)) {
-    throw new BadRequestException(
-      `File contents do not match the declared ${mimetype} type`,
+    throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `File contents do not match the declared ${mimetype} type`,
     );
   }
 }

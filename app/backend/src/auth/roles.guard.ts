@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   CanActivate,
@@ -26,7 +27,7 @@ export class RolesGuard implements CanActivate {
     const role = request.user?.role;
 
     if (!role || !requiredRoles.includes(role)) {
-      throw new ForbiddenException('Access denied: insufficient role');
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: insufficient role');
     }
 
     return true;

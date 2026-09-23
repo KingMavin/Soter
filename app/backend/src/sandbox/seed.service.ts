@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   InternalServerErrorException,
@@ -136,8 +137,7 @@ export class SeedService {
       });
 
       if (!campaign) {
-        throw new UnprocessableEntityException(
-          `Demo campaign "${seed.campaignName}" not found. Run seedCampaigns() first.`,
+        throw new AppException(ERROR_CODES.VALIDATION_ERROR, 422, `Demo campaign "${seed.campaignName}" not found. Run seedCampaigns() first.`,
         );
       }
 
@@ -178,24 +178,21 @@ export class SeedService {
     try {
       tenant = await this.seedTenant();
     } catch (err) {
-      throw new InternalServerErrorException(
-        `Seed step "tenant" failed: ${(err as Error).message}`,
+      throw new AppException(ERROR_CODES.INTERNAL_SERVER_ERROR, 500, `Seed step "tenant" failed: ${(err as Error).message}`,
       );
     }
 
     try {
       campaigns = await this.seedCampaigns();
     } catch (err) {
-      throw new InternalServerErrorException(
-        `Seed step "campaigns" failed: ${(err as Error).message}`,
+      throw new AppException(ERROR_CODES.INTERNAL_SERVER_ERROR, 500, `Seed step "campaigns" failed: ${(err as Error).message}`,
       );
     }
 
     try {
       claims = await this.seedClaims();
     } catch (err) {
-      throw new InternalServerErrorException(
-        `Seed step "claims" failed: ${(err as Error).message}`,
+      throw new AppException(ERROR_CODES.INTERNAL_SERVER_ERROR, 500, `Seed step "claims" failed: ${(err as Error).message}`,
       );
     }
 

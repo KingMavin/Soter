@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../../common/dto/error-response.dto';
 import {
   Injectable,
   CanActivate,
@@ -50,15 +51,14 @@ export class ArtifactTokenGuard implements CanActivate {
     const token = this.extractToken(request);
 
     if (!token) {
-      throw new UnauthorizedException('Artifact access token required');
+      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'Artifact access token required');
     }
 
     // Verify token
     const result = await this.tokenService.verifyToken(token);
 
     if (!result.valid) {
-      throw new UnauthorizedException(
-        `Invalid artifact token: ${result.error}`,
+      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, `Invalid artifact token: ${result.error}`,
       );
     }
 
@@ -71,13 +71,12 @@ export class ArtifactTokenGuard implements CanActivate {
     );
 
     if (!ownsArtifact) {
-      throw new ForbiddenException('Cross-organization artifact access denied');
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Cross-organization artifact access denied');
     }
 
     // Validate role permissions
     if (!this.hasRequiredRole(payload.role)) {
-      throw new ForbiddenException(
-        `Role '${payload.role}' lacks artifact access permissions`,
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, `Role '${payload.role}' lacks artifact access permissions`,
       );
     }
 

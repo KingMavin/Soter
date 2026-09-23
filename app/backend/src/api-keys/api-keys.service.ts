@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   BadRequestException,
   Injectable,
@@ -370,18 +371,17 @@ export class ApiKeysService {
     expiresInDays?: number;
   }): Date | null {
     if (input.expiresAt != null && input.expiresInDays != null) {
-      throw new BadRequestException(
-        'Provide either expiresAt or expiresInDays, not both',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Provide either expiresAt or expiresInDays, not both',
       );
     }
 
     if (input.expiresAt != null) {
       const expiresAt = new Date(input.expiresAt);
       if (Number.isNaN(expiresAt.getTime())) {
-        throw new BadRequestException('expiresAt must be a valid ISO datetime');
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'expiresAt must be a valid ISO datetime');
       }
       if (expiresAt.getTime() <= Date.now()) {
-        throw new BadRequestException('expiresAt must be in the future');
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'expiresAt must be in the future');
       }
       return expiresAt;
     }
@@ -395,7 +395,7 @@ export class ApiKeysService {
 
   async create(dto: CreateApiKeyDto, actor?: Actor) {
     if (dto.role === AppRole.ngo && !dto.ngoId) {
-      throw new BadRequestException('ngoId is required for NGO API keys');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'ngoId is required for NGO API keys');
     }
 
     const rawKey = this.newRawKey();
@@ -437,7 +437,7 @@ export class ApiKeysService {
       select: { id: true, revokedAt: true, keyPreview: true },
     });
     if (!existing) {
-      throw new NotFoundException('API key not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'API key not found');
     }
 
     if (existing.revokedAt) {
@@ -494,10 +494,10 @@ export class ApiKeysService {
         },
       });
       if (!existing) {
-        throw new NotFoundException('API key not found');
+        throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'API key not found');
       }
       if (existing.revokedAt) {
-        throw new BadRequestException('Cannot rotate a revoked API key');
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Cannot rotate a revoked API key');
       }
 
       const rawKey = this.newRawKey();

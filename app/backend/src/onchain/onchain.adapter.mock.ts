@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import {
   OnchainAdapter,
@@ -199,7 +200,7 @@ export class MockOnchainAdapter implements OnchainAdapter {
     const nowSec = Math.floor(Date.now() / 1000);
     if (pkg.expiresAt <= nowSec) {
       pkg.status = 'Expired';
-      throw new BadRequestException('Aid package has expired');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Aid package has expired');
     }
 
     if (
@@ -208,7 +209,7 @@ export class MockOnchainAdapter implements OnchainAdapter {
       pkg.status === 'Cancelled' ||
       pkg.status === 'Refunded'
     ) {
-      throw new BadRequestException(`Aid package is in status ${pkg.status}`);
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Aid package is in status ${pkg.status}`);
     }
 
     const amountToClaimStr = params.amount || pkg.remainingAmount;
@@ -217,12 +218,11 @@ export class MockOnchainAdapter implements OnchainAdapter {
     const remaining = BigInt(pkg.remainingAmount);
 
     if (amountToClaim <= BigInt(0)) {
-      throw new BadRequestException('Claim amount must be greater than zero');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Claim amount must be greater than zero');
     }
 
     if (amountToClaim > remaining) {
-      throw new BadRequestException(
-        'Claim amount exceeds remaining package balance',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Claim amount exceeds remaining package balance',
       );
     }
 

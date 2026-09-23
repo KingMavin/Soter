@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   BadRequestException,
   Injectable,
@@ -44,7 +45,7 @@ export class DeviceTokensService {
     const { userId, orgId } = actor || {};
 
     if (!userId) {
-      throw new BadRequestException('userId is required');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'userId is required');
     }
 
     // Check if device token already exists
@@ -121,7 +122,7 @@ export class DeviceTokensService {
     });
 
     if (!token) {
-      throw new NotFoundException('Device token not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Device token not found');
     }
 
     return token;
@@ -134,7 +135,7 @@ export class DeviceTokensService {
     const { userId } = actor || {};
 
     if (!userId) {
-      throw new BadRequestException('userId is required');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'userId is required');
     }
 
     const existing = await this.prisma.deviceNotificationToken.findFirst({
@@ -143,7 +144,7 @@ export class DeviceTokensService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Device token not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Device token not found');
     }
 
     if (existing.revokedAt) {
@@ -179,7 +180,7 @@ export class DeviceTokensService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Device token not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Device token not found');
     }
 
     await this.prisma.deviceNotificationToken.delete({
@@ -199,7 +200,7 @@ export class DeviceTokensService {
     });
 
     if (!token) {
-      throw new NotFoundException('Device token not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Device token not found');
     }
 
     await this.prisma.deviceNotificationToken.update({

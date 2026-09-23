@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   Logger,
@@ -75,8 +76,7 @@ export class EvidenceService {
           orgId,
         },
       });
-      throw new BadRequestException(
-        'File already exists in queue for this organization',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'File already exists in queue for this organization',
       );
     }
 
@@ -254,10 +254,10 @@ export class EvidenceService {
       where: { id, ownerId },
     });
 
-    if (!item) throw new NotFoundException('Queue item not found');
+    if (!item) throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Queue item not found');
 
     if (item.status === EvidenceStatus.completed) {
-      throw new BadRequestException('Item already uploaded');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Item already uploaded');
     }
 
     await this.prisma.evidenceQueueItem.update({
@@ -275,7 +275,7 @@ export class EvidenceService {
       where: { id, ownerId },
     });
 
-    if (!item) throw new NotFoundException('Queue item not found');
+    if (!item) throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Queue item not found');
 
     // Delete the durably stored artifact from the StorageDriver, if present.
     if (item.storageKey) {

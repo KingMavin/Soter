@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   NotFoundException,
@@ -97,7 +98,7 @@ export class CampaignsService {
       where: { id },
     });
     if (!campaign || (campaign as { deletedAt?: Date | null }).deletedAt) {
-      throw new NotFoundException('Campaign not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Campaign not found');
     }
     return campaign;
   }
@@ -118,7 +119,7 @@ export class CampaignsService {
     });
 
     if (!campaign || campaign.deletedAt) {
-      throw new NotFoundException('Campaign not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Campaign not found');
     }
 
     const allTransactions = campaign.claims.flatMap(claim =>
@@ -310,10 +311,10 @@ export class CampaignsService {
 
     if (query.from || query.to) {
       if (query.from && isNaN(Date.parse(query.from))) {
-        throw new BadRequestException(`Invalid 'from' date: ${query.from}`);
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'from' date: ${query.from}`);
       }
       if (query.to && isNaN(Date.parse(query.to))) {
-        throw new BadRequestException(`Invalid 'to' date: ${query.to}`);
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'to' date: ${query.to}`);
       }
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);

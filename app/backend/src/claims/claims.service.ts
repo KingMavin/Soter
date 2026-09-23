@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   BadRequestException,
@@ -118,7 +119,7 @@ export class ClaimsService {
       where: { id: createClaimDto.campaignId },
     });
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Campaign not found');
     }
 
     await this.budgetService.assertWithinBudget(
@@ -182,7 +183,7 @@ export class ClaimsService {
     });
     const claim = claimResult;
     if (!claim || claim.deletedAt) {
-      throw new NotFoundException('Claim not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
     }
     return {
       ...claim,
@@ -213,12 +214,11 @@ export class ClaimsService {
     });
 
     if (!claim) {
-      throw new NotFoundException('Claim not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
     }
 
     if (claim.status !== ClaimStatus.approved) {
-      throw new BadRequestException(
-        `Cannot transition from ${claim.status} to ${ClaimStatus.disbursed}`,
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot transition from ${claim.status} to ${ClaimStatus.disbursed}`,
       );
     }
 
@@ -497,11 +497,10 @@ export class ClaimsService {
   ) {
     const claim = await this.prisma.claim.findUnique({ where: { id } });
     if (!claim) {
-      throw new NotFoundException('Claim not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
     }
     if (claim.status !== fromStatus) {
-      throw new BadRequestException(
-        `Cannot transition from ${claim.status} to ${toStatus}`,
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Cannot transition from ${claim.status} to ${toStatus}`,
       );
     }
 
@@ -599,7 +598,7 @@ export class ClaimsService {
       };
     }
 
-    throw new NotFoundException('Claim not found');
+    throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
   }
 
   private async findDisbursementTransaction(
@@ -627,7 +626,7 @@ export class ClaimsService {
     const claim = await this.resolveClaimByIdentifier(identifier);
 
     if (!claim) {
-      throw new NotFoundException('Claim not found');
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Claim not found');
     }
 
     const tokenAddress = this.getTokenAddressForClaim(claim);
@@ -817,10 +816,10 @@ export class ClaimsService {
 
     if (query.from || query.to) {
       if (query.from && isNaN(Date.parse(query.from))) {
-        throw new BadRequestException(`Invalid 'from' date: ${query.from}`);
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'from' date: ${query.from}`);
       }
       if (query.to && isNaN(Date.parse(query.to))) {
-        throw new BadRequestException(`Invalid 'to' date: ${query.to}`);
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid 'to' date: ${query.to}`);
       }
       where.createdAt = {};
       if (query.from) where.createdAt.gte = new Date(query.from);

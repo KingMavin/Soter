@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   CanActivate,
   ExecutionContext,
@@ -18,8 +19,7 @@ import {
 export class SandboxGuard implements CanActivate {
   canActivate(_context: ExecutionContext): boolean {
     if (process.env.SANDBOX_ENABLED !== 'true') {
-      throw new ForbiddenException(
-        'Sandbox endpoints are disabled. Set SANDBOX_ENABLED=true to enable.',
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Sandbox endpoints are disabled. Set SANDBOX_ENABLED=true to enable.',
       );
     }
     return true;

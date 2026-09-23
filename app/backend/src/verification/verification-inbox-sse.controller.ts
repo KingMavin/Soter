@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Controller,
   Headers,
@@ -81,8 +82,7 @@ export class VerificationInboxSseController {
   ): Observable<MessageEvent> {
     const reviewerId = req.user?.apiKeyId ?? req.user?.sub;
     if (!reviewerId) {
-      throw new UnauthorizedException(
-        'An authenticated reviewer is required to stream the inbox',
+      throw new AppException(ERROR_CODES.UNAUTHORIZED, 401, 'An authenticated reviewer is required to stream the inbox',
       );
     }
 

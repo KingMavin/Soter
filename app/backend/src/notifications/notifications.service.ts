@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   BadRequestException,
   Injectable,
@@ -264,10 +265,9 @@ export class NotificationsService {
       where: { id },
     });
     if (!record)
-      throw new NotFoundException(`Outbox record with id "${id}" not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Outbox record with id "${id}" not found`);
     if (record.status !== 'dead_letter') {
-      throw new BadRequestException(
-        'Only dead-lettered notifications can be replayed',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Only dead-lettered notifications can be replayed',
       );
     }
 
@@ -280,8 +280,7 @@ export class NotificationsService {
       },
     });
     if (claimed.count !== 1) {
-      throw new BadRequestException(
-        'Notification replay is already in progress',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Notification replay is already in progress',
       );
     }
 

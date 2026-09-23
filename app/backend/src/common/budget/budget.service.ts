@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../../common/dto/error-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Injectable, BadRequestException } from '@nestjs/common';
 
@@ -41,11 +42,11 @@ export class BudgetService {
     const campaign = await this.prisma.campaign.findUnique({
       where: { id: campaignId },
     });
-    if (!campaign) throw new BadRequestException('Campaign not found');
+    if (!campaign) throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Campaign not found');
     const usage = await this.getCampaignBudgetUsage(campaignId);
     const total = usage.locked + usage.disbursed + newAmount;
     if (total > campaign.budget) {
-      throw new BadRequestException('Campaign funding cap exceeded');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Campaign funding cap exceeded');
     }
   }
 }

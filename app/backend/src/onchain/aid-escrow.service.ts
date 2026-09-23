@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -133,8 +134,7 @@ export class AidEscrowService {
     );
 
     if (!balanceCheck.sufficient) {
-      throw new BadRequestException(
-        `Insufficient token balance for ${dto.tokenAddress}. ` +
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Insufficient token balance for ${dto.tokenAddress}. ` +
           `Required: ${balanceCheck.required}, Available: ${balanceCheck.balance}`,
       );
     }
@@ -144,7 +144,7 @@ export class AidEscrowService {
     if (campaignId) {
       const amountNum = Number(dto.amount);
       if (isNaN(amountNum)) {
-        throw new BadRequestException('Invalid amount for funding cap check');
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Invalid amount for funding cap check');
       }
       await this.budgetService.assertWithinBudget(campaignId, amountNum);
     }
@@ -325,8 +325,7 @@ export class AidEscrowService {
     );
 
     if (!balanceCheck.sufficient) {
-      throw new BadRequestException(
-        `Insufficient token balance for batch creation. Token: ${dto.tokenAddress}, ` +
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Insufficient token balance for batch creation. Token: ${dto.tokenAddress}, ` +
           `Required: ${balanceCheck.required}, Available: ${balanceCheck.balance}`,
       );
     }

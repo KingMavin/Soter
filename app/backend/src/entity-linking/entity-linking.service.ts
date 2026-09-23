@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   Logger,
@@ -42,7 +43,7 @@ export class EntityLinkingService {
 
     // Validate confidence score
     if (dto.confidenceScore < 0 || dto.confidenceScore > 1) {
-      throw new BadRequestException('Confidence score must be between 0 and 1');
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'Confidence score must be between 0 and 1');
     }
 
     // Find or create registry record
@@ -213,12 +214,11 @@ export class EntityLinkingService {
     });
 
     if (!link) {
-      throw new NotFoundException(`Entity link ${linkId} not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Entity link ${linkId} not found`);
     }
 
     if (link.reviewStatus !== EntityLinkReviewStatus.pending_review) {
-      throw new BadRequestException(
-        `Entity link ${linkId} is not awaiting review (status: ${link.reviewStatus})`,
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Entity link ${linkId} is not awaiting review (status: ${link.reviewStatus})`,
       );
     }
 
@@ -242,8 +242,7 @@ export class EntityLinkingService {
 
       case 'remap': {
         if (!dto.remapEntityType || !dto.remapRegistryId) {
-          throw new BadRequestException(
-            'remapEntityType and remapRegistryId are required for a remap decision',
+          throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'remapEntityType and remapRegistryId are required for a remap decision',
           );
         }
         const newRegistryRecordId = await this.findRegistryRecordById(
@@ -285,8 +284,7 @@ export class EntityLinkingService {
         // dto arrives as an untyped HTTP body, so a client can send an
         // action outside the EntityLinkReviewAction union at runtime even
         // though the switch above is exhaustive at compile time.
-        throw new BadRequestException(
-          `Unknown review action: ${String(dto.action)}`,
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Unknown review action: ${String(dto.action)}`,
         );
     }
 
@@ -614,8 +612,7 @@ export class EntityLinkingService {
           where: { registryId },
         });
         if (!org) {
-          throw new NotFoundException(
-            `Organization with registry ID ${registryId} not found`,
+          throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Organization with registry ID ${registryId} not found`,
           );
         }
         return org.id;
@@ -626,8 +623,7 @@ export class EntityLinkingService {
           where: { registryId },
         });
         if (!loc) {
-          throw new NotFoundException(
-            `Location with registry ID ${registryId} not found`,
+          throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Location with registry ID ${registryId} not found`,
           );
         }
         return loc.id;
@@ -638,8 +634,7 @@ export class EntityLinkingService {
           where: { registryId },
         });
         if (!asset) {
-          throw new NotFoundException(
-            `Asset with registry ID ${registryId} not found`,
+          throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Asset with registry ID ${registryId} not found`,
           );
         }
         return asset.id;
@@ -650,15 +645,14 @@ export class EntityLinkingService {
           where: { registryId },
         });
         if (!proj) {
-          throw new NotFoundException(
-            `Project with registry ID ${registryId} not found`,
+          throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Project with registry ID ${registryId} not found`,
           );
         }
         return proj.id;
       }
 
       default:
-        throw new BadRequestException(`Invalid entity type: ${entityType}`);
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Invalid entity type: ${entityType}`);
     }
   }
 

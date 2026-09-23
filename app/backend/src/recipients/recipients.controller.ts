@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   BadRequestException,
   Body,
@@ -29,8 +30,7 @@ export class RecipientsController {
     file: Express.Multer.File | undefined,
   ): Express.Multer.File {
     if (!file || !file.buffer || file.buffer.length === 0) {
-      throw new BadRequestException(
-        'A CSV file must be uploaded in the "file" field.',
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 'A CSV file must be uploaded in the "file" field.',
       );
     }
     return file;

@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../../common/dto/error-response.dto';
 import {
   CanActivate,
   ExecutionContext,
@@ -21,7 +22,7 @@ export class OrgOwnershipGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const user = request.user;
 
-    if (!user) throw new ForbiddenException('Not authenticated');
+    if (!user) throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Not authenticated');
 
     // Admins can access any org's data
     if (user.role === AppRole.admin) return true;
@@ -37,8 +38,7 @@ export class OrgOwnershipGuard implements CanActivate {
     if (!resourceNgoId) return true; // no ngoId on resource — allow (listing is scoped in service)
 
     if (!user.ngoId || user.ngoId !== resourceNgoId) {
-      throw new ForbiddenException(
-        'Access denied: resource belongs to a different organization',
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: resource belongs to a different organization',
       );
     }
 

@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Controller,
   Get,
@@ -77,8 +78,7 @@ export class DeploymentMetadataController {
     } catch (error: unknown) {
       this.logger.error('Failed to create deployment metadata:', error);
       if ((error as { code?: string }).code === 'P2002') {
-        throw new BadRequestException(
-          `Deployment metadata already exists for ${dto.network}/${dto.contractName}`,
+        throw new AppException(ERROR_CODES.BAD_REQUEST, 400, `Deployment metadata already exists for ${dto.network}/${dto.contractName}`,
         );
       }
       throw error;

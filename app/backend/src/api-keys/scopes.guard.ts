@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   CanActivate,
@@ -41,13 +42,13 @@ export class ScopesGuard implements CanActivate {
       | undefined;
 
     if (!user) {
-      throw new ForbiddenException('Access denied: no authenticated user');
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: no authenticated user');
     }
 
     const grantedScopes: ApiKeyScope[] = user.scopes ?? [];
 
     if (grantedScopes.length === 0) {
-      throw new ForbiddenException('Access denied: no API key scopes');
+      throw new AppException(ERROR_CODES.FORBIDDEN, 403, 'Access denied: no API key scopes');
     }
 
     const grantedLevels = grantedScopes.map(s => SCOPE_HIERARCHY[s] ?? 0);
@@ -60,14 +61,13 @@ export class ScopesGuard implements CanActivate {
 
       if (required === WEBHOOK_SCOPE) {
         if (!hasWebhook) {
-          throw new ForbiddenException(`Access denied: webhook scope required`);
+          throw new AppException(ERROR_CODES.FORBIDDEN, 403, `Access denied: webhook scope required`);
         }
         continue;
       }
 
       if (maxGrantedLevel < requiredLevel) {
-        throw new ForbiddenException(
-          `Access denied: insufficient API key scope`,
+        throw new AppException(ERROR_CODES.FORBIDDEN, 403, `Access denied: insufficient API key scope`,
         );
       }
     }

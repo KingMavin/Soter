@@ -1,3 +1,4 @@
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import {
   Injectable,
   Logger,
@@ -49,8 +50,7 @@ export class RetentionPolicyService {
       where: { entity: dto.entity },
     });
     if (existing) {
-      throw new ConflictException(
-        `Retention policy for entity "${dto.entity}" already exists`,
+      throw new AppException(ERROR_CODES.CONFLICT, 409, `Retention policy for entity "${dto.entity}" already exists`,
       );
     }
 
@@ -76,7 +76,7 @@ export class RetentionPolicyService {
       where: { id },
     });
     if (!policy) {
-      throw new NotFoundException(`Retention policy "${id}" not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Retention policy "${id}" not found`);
     }
     return policy;
   }

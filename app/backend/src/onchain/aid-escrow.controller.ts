@@ -42,7 +42,9 @@ import { SorobanEventCorrelationService } from './soroban-event-correlation.serv
 @ApiBearerAuth('JWT-auth')
 @Controller('onchain/aid-escrow')
 export class AidEscrowController {
-  private requireUserAddress(req: Request & { user?: { address?: string } }): string {
+  private requireUserAddress(
+    req: Request & { user?: { address?: string } },
+  ): string {
     const address = req.user?.address;
     if (!address) {
       throw new AppException(

@@ -169,7 +169,11 @@ export class VerificationFlowService {
       session.identifier,
     );
 
-    await this.sendCode(session.channel, decryptedIdentifier, code);
+    await this.sendCode(
+      session.channel as VerificationChannelDto,
+      decryptedIdentifier,
+      code,
+    );
 
     this.logger.log(`Verification code resent for session ${session.id}`);
 

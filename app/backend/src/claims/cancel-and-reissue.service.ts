@@ -323,10 +323,12 @@ export class CancelAndReissueService {
     // Walk forwards from root to collect all descendants
     const chain = await this.collectChain(root);
 
-    return chain.map(c => ({
-      ...c,
-      recipientRef: this.encryptionService.decrypt(c.recipientRef),
-    }));
+    return chain
+      .filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined)
+      .map(c => ({
+        ...c,
+        recipientRef: this.encryptionService.decrypt(c.recipientRef),
+      }));
   }
 
   // ---------------------------------------------------------------------------

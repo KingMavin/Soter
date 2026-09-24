@@ -455,6 +455,9 @@ export class ApiKeysService {
         where: { id },
         select: selectFields,
       });
+      if (!row) {
+        throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'API key not found');
+      }
       return toAdminView(row, this.reminderWindowDays());
     }
 

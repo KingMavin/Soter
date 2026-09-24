@@ -349,7 +349,8 @@ export class AnalyticsService {
 
     // Resolve the Prisma ClaimStatus filter.
     const claimStatus =
-      status && Object.values(ClaimStatus).includes(status)
+      status &&
+      Object.values(ClaimStatus).includes(status as ClaimStatus)
         ? (status as ClaimStatus)
         : ClaimStatus.disbursed;
 

@@ -264,9 +264,7 @@ describe('ClaimsService', () => {
     it('throws AppException when the campaign does not exist', async () => {
       jest.spyOn(prismaService.campaign, 'findUnique').mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(
-        AppException,
-      );
+      await expect(service.create(createDto)).rejects.toThrow(AppException);
       expect(prismaService.$transaction).not.toHaveBeenCalled();
     });
 

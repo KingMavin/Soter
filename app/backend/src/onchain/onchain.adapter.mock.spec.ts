@@ -284,5 +284,3 @@ describe('MockOnchainAdapter', () => {
     });
   });
 });
-
-

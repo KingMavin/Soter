@@ -490,4 +490,3 @@ describe('SorobanTransactionLifecycleService - Stuck Detection', () => {
     });
   });
 });
-

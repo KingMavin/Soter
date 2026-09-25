@@ -298,8 +298,7 @@ describe('ClaimsService', () => {
       // written, so a rejection never leaves a partial claim behind.
       const reserveOrder = (budgetService.reserveBudget as jest.Mock).mock
         .invocationCallOrder[0];
-      const createOrder = (tx.claim.create as jest.Mock).mock
-        .invocationCallOrder[0];
+      const createOrder = tx.claim.create.mock.invocationCallOrder[0];
       expect(reserveOrder).toBeLessThan(createOrder);
 
       // A matching 'lock' ledger entry is written for the new claim so that

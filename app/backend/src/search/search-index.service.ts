@@ -1,11 +1,9 @@
 import {
-  BadRequestException,
-  ConflictException,
   Injectable,
   Logger,
-  NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
+import { AppException, ERROR_CODES } from '../common/dto/error-response.dto';
 import { Prisma, SearchIndexEntityType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -140,13 +138,13 @@ export class SearchIndexService implements OnModuleInit {
           SEARCH_INDEX_ADVISORY_LOCK_KEY,
         );
         if (!lockRow?.locked) {
-          throw new ConflictException(
+          throw new AppException(ERROR_CODES.CONFLICT, 409, 
             'A search index rebuild request is already being claimed; retry shortly',
           );
         }
 
         if (this.activeBuildId) {
-          throw new ConflictException(
+          throw new AppException(ERROR_CODES.CONFLICT, 409, 
             `A search index rebuild (${this.activeBuildId}) is already running in this process`,
           );
         }
@@ -164,7 +162,7 @@ export class SearchIndexService implements OnModuleInit {
 
           if (options.resume) {
             if (!stale) {
-              throw new ConflictException(
+              throw new AppException(ERROR_CODES.CONFLICT, 409, 
                 `Search index rebuild ${running.id} is still active, so it cannot be resumed yet`,
               );
             }
@@ -172,7 +170,7 @@ export class SearchIndexService implements OnModuleInit {
           }
 
           if (!stale) {
-            throw new ConflictException(
+            throw new AppException(ERROR_CODES.CONFLICT, 409, 
               `A search index rebuild (${running.id}) is already in progress; concurrent rebuilds are rejected. Wait for it to finish, or pass resume=true after it stalls.`,
             );
           }
@@ -186,7 +184,7 @@ export class SearchIndexService implements OnModuleInit {
             },
           });
         } else if (options.resume) {
-          throw new BadRequestException(
+          throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 
             'No interrupted search index rebuild to resume',
           );
         }
@@ -247,7 +245,7 @@ export class SearchIndexService implements OnModuleInit {
       where: { id: buildId },
     });
     if (!build) {
-      throw new NotFoundException(`Search index build ${buildId} not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Search index build ${buildId} not found`);
     }
     return this.toProgress(build);
   }
@@ -279,10 +277,10 @@ export class SearchIndexService implements OnModuleInit {
       where: { id: buildId },
     });
     if (!build) {
-      throw new NotFoundException(`Search index build ${buildId} not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Search index build ${buildId} not found`);
     }
     if (build.status !== 'running') {
-      throw new ConflictException(
+      throw new AppException(ERROR_CODES.CONFLICT, 409, 
         `Search index build ${buildId} is not resumable (status=${build.status})`,
       );
     }
@@ -354,7 +352,7 @@ export class SearchIndexService implements OnModuleInit {
       where: { id: buildId },
     });
     if (!build) {
-      throw new NotFoundException(`Search index build ${buildId} not found`);
+      throw new AppException(ERROR_CODES.NOT_FOUND, 404, `Search index build ${buildId} not found`);
     }
     if (build.mode === SEARCH_INDEX_BUILD_MODE_DRY_RUN) {
       return;
@@ -363,7 +361,7 @@ export class SearchIndexService implements OnModuleInit {
       return;
     }
     if (this.activeBuildId && this.activeBuildId !== buildId) {
-      throw new ConflictException(
+      throw new AppException(ERROR_CODES.CONFLICT, 409, 
         `Search index build ${this.activeBuildId} is already running in this process`,
       );
     }
@@ -767,7 +765,7 @@ export class SearchIndexService implements OnModuleInit {
       }
     }
     if (resolved.length === 0) {
-      throw new BadRequestException(
+      throw new AppException(ERROR_CODES.BAD_REQUEST, 400, 
         'No supported search index entity types were provided',
       );
     }

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { AppException } from '../common/dto/error-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -68,6 +68,7 @@ describe('Claims -> verification pipeline integration', () => {
     },
     sorobanEventCorrelation: { findFirst: jest.fn() },
     auditLog: { findMany: jest.fn(), findFirst: jest.fn() },
+    balanceLedger: { create: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -141,6 +142,7 @@ describe('Claims -> verification pipeline integration', () => {
           provide: BudgetService,
           useValue: {
             assertWithinBudget: jest.fn().mockResolvedValue(undefined),
+            reserveBudget: jest.fn().mockResolvedValue(undefined),
           },
         },
         { provide: ONCHAIN_ADAPTER_TOKEN, useValue: null },
@@ -204,6 +206,7 @@ describe('Claims -> verification pipeline integration', () => {
     prismaMock.$transaction.mockImplementation(async (callback: unknown) =>
       (callback as (tx: unknown) => Promise<unknown>)({
         claim: prismaMock.claim,
+        balanceLedger: prismaMock.balanceLedger,
       }),
     );
   });
@@ -279,7 +282,7 @@ describe('Claims -> verification pipeline integration', () => {
     expect(readVerification(claim.id)).toMatchObject({ passed: false });
 
     await expect(claimsService.verify(claim.id)).rejects.toBeInstanceOf(
-      BadRequestException,
+      AppException,
     );
   });
 
@@ -297,7 +300,7 @@ describe('Claims -> verification pipeline integration', () => {
 
     // With no verification record the claim can never be marked verified.
     await expect(claimsService.verify(claim.id)).rejects.toBeInstanceOf(
-      BadRequestException,
+      AppException,
     );
   });
 });

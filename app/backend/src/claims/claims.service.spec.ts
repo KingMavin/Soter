@@ -261,11 +261,11 @@ describe('ClaimsService', () => {
         .mockResolvedValue(mockCampaign as any);
     });
 
-    it('throws NotFoundException when the campaign does not exist', async () => {
+    it('throws AppException when the campaign does not exist', async () => {
       jest.spyOn(prismaService.campaign, 'findUnique').mockResolvedValue(null);
 
       await expect(service.create(createDto)).rejects.toThrow(
-        NotFoundException,
+        AppException,
       );
       expect(prismaService.$transaction).not.toHaveBeenCalled();
     });
@@ -318,7 +318,7 @@ describe('ClaimsService', () => {
     it('rolls back (creates no claim) when the transaction-safe budget check rejects', async () => {
       const tx = mockTransaction();
       (budgetService.reserveBudget as jest.Mock).mockRejectedValue(
-        new BadRequestException('Campaign funding cap exceeded'),
+        new Error('Campaign funding cap exceeded'),
       );
 
       await expect(service.create(createDto)).rejects.toThrow(
@@ -563,7 +563,7 @@ describe('ClaimsService', () => {
       expect(transactionSpy).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if claim does not exist', async () => {
+    it('should throw AppException if claim does not exist', async () => {
       jest.spyOn(prismaService.claim, 'findUnique').mockResolvedValue(null);
 
       await expect(service.disburse('non-existent')).rejects.toThrow(
@@ -571,7 +571,7 @@ describe('ClaimsService', () => {
       );
     });
 
-    it('should throw BadRequestException if claim is not in approved status', async () => {
+    it('should throw AppException if claim is not in approved status', async () => {
       const unapprovedClaim = {
         ...mockClaim,
         status: ClaimStatus.verified,

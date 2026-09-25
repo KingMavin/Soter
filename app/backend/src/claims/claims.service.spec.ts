@@ -16,10 +16,12 @@ import { EncryptionService } from '../common/encryption/encryption.service';
 import { ClaimStatus, Prisma, SorobanOperationType } from '@prisma/client';
 import { SorobanTransactionLifecycleService } from '../onchain/soroban-transaction-lifecycle.service';
 import { SorobanTransactionScheduler } from '../onchain/soroban-transaction.scheduler';
+import { VerificationService } from '../verification/verification.service';
 
 describe('ClaimsService', () => {
   let service: ClaimsService;
   let prismaService: PrismaService;
+  let budgetService: BudgetService;
   let _onchainAdapter: OnchainAdapter;
   let _metricsService: MetricsService;
   let _auditService: AuditService;
@@ -77,6 +79,7 @@ describe('ClaimsService', () => {
     incrementOnchainOperation: jest.fn(),
     recordOnchainDuration: jest.fn(),
     incrementCounter: jest.fn(),
+    incrementClaimsCreated: jest.fn(),
     incrementClaimsDisbursed: jest.fn(),
     incrementClaimsVerified: jest.fn(),
     incrementClaimsApproved: jest.fn(),
@@ -95,6 +98,12 @@ describe('ClaimsService', () => {
     record: jest.fn().mockResolvedValue({ id: 'audit-1' }),
   };
 
+  const mockVerificationService = {
+    enqueueVerification: jest
+      .fn()
+      .mockResolvedValue({ jobId: 'job-1', priority: 0 }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -103,18 +112,25 @@ describe('ClaimsService', () => {
           provide: BudgetService,
           useValue: {
             assertWithinBudget: jest.fn(),
+            reserveBudget: jest.fn(),
             getCampaignBudgetUsage: jest.fn(),
           },
         },
         {
           provide: PrismaService,
           useValue: {
+            campaign: {
+              findUnique: jest.fn(),
+            },
             claim: {
               findUnique: jest.fn(),
               update: jest.fn(),
               findMany: jest.fn(),
               create: jest.fn(),
               count: jest.fn(),
+            },
+            balanceLedger: {
+              create: jest.fn(),
             },
             sorobanTransaction: {
               create: jest.fn(),
@@ -175,17 +191,144 @@ describe('ClaimsService', () => {
           provide: SorobanTransactionScheduler,
           useValue: mockSorobanTxScheduler,
         },
+        {
+          provide: VerificationService,
+          useValue: mockVerificationService,
+        },
       ],
     }).compile();
 
     service = module.get<ClaimsService>(ClaimsService);
     prismaService = module.get<PrismaService>(PrismaService);
+    budgetService = module.get<BudgetService>(BudgetService);
     _onchainAdapter = module.get<OnchainAdapter>(ONCHAIN_ADAPTER_TOKEN);
     _metricsService = module.get<MetricsService>(MetricsService);
     _auditService = module.get<AuditService>(AuditService);
     configService = module.get(ConfigService);
 
     jest.clearAllMocks();
+  });
+
+  describe('create', () => {
+    const createDto: any = {
+      campaignId: 'campaign-1',
+      amount: 100,
+      recipientRef: 'recipient-123',
+      tokenAddress: 'G' + 'A'.repeat(55),
+      evidenceRef: 'evidence-456',
+    };
+
+    const mockCampaign = {
+      id: 'campaign-1',
+      name: 'Test Campaign',
+      status: 'active',
+      budget: 1000,
+    };
+
+    /**
+     * Builds a fake transaction client and wires prismaService.$transaction
+     * to invoke the real callback against it, mirroring how Prisma actually
+     * runs `$transaction(async (tx) => ...)`.
+     */
+    function mockTransaction() {
+      const tx = {
+        claim: {
+          create: jest.fn().mockResolvedValue({
+            id: 'claim-new',
+            campaignId: createDto.campaignId,
+            amount: createDto.amount,
+            recipientRef: createDto.recipientRef,
+            evidenceRef: createDto.evidenceRef,
+            status: ClaimStatus.requested,
+            campaign: mockCampaign,
+          }),
+        },
+        balanceLedger: {
+          create: jest.fn().mockResolvedValue({ id: 'ledger-1' }),
+        },
+      };
+      jest
+        .spyOn(prismaService, '$transaction')
+        .mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+          callback(tx),
+        );
+      return tx;
+    }
+
+    beforeEach(() => {
+      jest
+        .spyOn(prismaService.campaign, 'findUnique')
+        .mockResolvedValue(mockCampaign as any);
+    });
+
+    it('throws NotFoundException when the campaign does not exist', async () => {
+      jest.spyOn(prismaService.campaign, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prismaService.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('reserves budget and creates the claim + lock ledger entry inside one transaction', async () => {
+      const tx = mockTransaction();
+      (budgetService.reserveBudget as jest.Mock).mockResolvedValue(undefined);
+
+      const result = await service.create(createDto);
+
+      // Budget was reserved against the transaction client, not the top-level
+      // prisma client, and using the given campaign/amount.
+      expect(budgetService.reserveBudget).toHaveBeenCalledWith(
+        tx,
+        createDto.campaignId,
+        createDto.amount,
+      );
+
+      // The claim was created on the same transaction client.
+      expect(tx.claim.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            campaignId: createDto.campaignId,
+            amount: createDto.amount,
+          }),
+        }),
+      );
+
+      // reserveBudget must run before the claim (and its ledger entry) are
+      // written, so a rejection never leaves a partial claim behind.
+      const reserveOrder = (budgetService.reserveBudget as jest.Mock).mock
+        .invocationCallOrder[0];
+      const createOrder = (tx.claim.create as jest.Mock).mock
+        .invocationCallOrder[0];
+      expect(reserveOrder).toBeLessThan(createOrder);
+
+      // A matching 'lock' ledger entry is written for the new claim so that
+      // subsequent budget checks see this claim's usage.
+      expect(tx.balanceLedger.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          campaignId: createDto.campaignId,
+          claimId: 'claim-new',
+          eventType: 'lock',
+          amount: createDto.amount,
+        }),
+      });
+
+      expect(result.id).toBe('claim-new');
+    });
+
+    it('rolls back (creates no claim) when the transaction-safe budget check rejects', async () => {
+      const tx = mockTransaction();
+      (budgetService.reserveBudget as jest.Mock).mockRejectedValue(
+        new BadRequestException('Campaign funding cap exceeded'),
+      );
+
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Campaign funding cap exceeded',
+      );
+
+      expect(tx.claim.create).not.toHaveBeenCalled();
+      expect(tx.balanceLedger.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('disburse', () => {
@@ -372,6 +515,10 @@ describe('ClaimsService', () => {
           {
             provide: SorobanTransactionScheduler,
             useValue: mockSorobanTxScheduler,
+          },
+          {
+            provide: VerificationService,
+            useValue: mockVerificationService,
           },
         ],
       }).compile();

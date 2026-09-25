@@ -254,4 +254,22 @@ export const metricsProviders = [
     help: 'Total number of failed idempotency key purge executions',
     labelNames: ['reason'],
   }),
+
+  // Evidence Queue SLA Metrics (issue #954)
+  makeGaugeProvider({
+    name: 'evidence_queue_depth',
+    help: 'Current number of evidence queue items, by EvidenceStatus',
+    labelNames: ['status'],
+  }),
+  makeGaugeProvider({
+    name: 'evidence_queue_oldest_pending_age_seconds',
+    help: 'Age in seconds of the oldest evidence item still pending review',
+    labelNames: [],
+  }),
+  makeHistogramProvider({
+    name: 'evidence_intake_to_decision_duration_seconds',
+    help: 'Time from evidence intake to a terminal decision (completed|failed)',
+    labelNames: ['status'],
+    buckets: [1, 5, 30, 60, 300, 900, 3600, 14400, 86400, 604800],
+  }),
 ];

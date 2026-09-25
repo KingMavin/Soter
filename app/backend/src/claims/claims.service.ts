@@ -27,6 +27,8 @@ import { SorobanTransactionLifecycleService } from '../onchain/soroban-transacti
 import { SorobanTransactionScheduler } from '../onchain/soroban-transaction.scheduler';
 import { escapeCsvField, toCsvRow } from '../common/csv/csv.util';
 import { streamCursorPaginated } from '../common/streaming/cursor-paginate';
+import { VerificationService } from '../verification/verification.service';
+import { readPersistedVerificationResult } from '../verification/verification-result.persistence';
 
 export interface ClaimExportRow {
   id: string;
@@ -63,6 +65,10 @@ interface RawClaimExportRow {
   reissuedFromId: string | null;
   metadata: unknown;
 }
+
+type ClaimWithCampaign = Prisma.ClaimGetPayload<{
+  include: { campaign: true };
+}>;
 
 type ExpirationCleanupCapableAdapter = OnchainAdapter & {
   revokeAidPackage?: (params: {
@@ -102,6 +108,7 @@ export class ClaimsService {
     private readonly budgetService: BudgetService,
     private readonly sorobanTransactionService: SorobanTransactionLifecycleService,
     private readonly sorobanTransactionScheduler: SorobanTransactionScheduler,
+    private readonly verificationService: VerificationService,
   ) {
     this.onchainEnabled =
       this.configService.get<string>('ONCHAIN_ENABLED') === 'true';
@@ -115,30 +122,51 @@ export class ClaimsService {
       throw new AppException(ERROR_CODES.NOT_FOUND, 404, 'Campaign not found');
     }
 
-    await this.budgetService.assertWithinBudget(
-      createClaimDto.campaignId,
-      createClaimDto.amount,
-    );
+    // Budget enforcement + claim creation + the ledger entry that records
+    // the new lock all happen inside one transaction. reserveBudget() takes
+    // a row lock on the campaign first, so two concurrent creates against
+    // the same campaign are serialized here rather than racing on a
+    // read-then-write: the second transaction blocks until the first
+    // commits its `lock` ledger entry, and only then re-sums usage.
+    const claim = await this.prisma.$transaction(async tx => {
+      await this.budgetService.reserveBudget(
+        tx,
+        createClaimDto.campaignId,
+        createClaimDto.amount,
+      );
 
-    const claim = await this.prisma.claim.create({
-      data: {
-        campaignId: createClaimDto.campaignId,
-        amount: createClaimDto.amount,
-        recipientRef: this.encryptionService.encrypt(
-          createClaimDto.recipientRef,
-        ),
-        evidenceRef: createClaimDto.evidenceRef,
-        importJobId: createClaimDto.importJobId,
-        importRowNumber: createClaimDto.importRowNumber,
-        expiresAt:
-          createClaimDto.expiresAt ??
-          new Date(
-            Date.now() + DEFAULT_CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+      const created = await tx.claim.create({
+        data: {
+          campaignId: createClaimDto.campaignId,
+          amount: createClaimDto.amount,
+          recipientRef: this.encryptionService.encrypt(
+            createClaimDto.recipientRef,
           ),
-      },
-      include: {
-        campaign: true,
-      },
+          evidenceRef: createClaimDto.evidenceRef,
+          importJobId: createClaimDto.importJobId,
+          importRowNumber: createClaimDto.importRowNumber,
+          expiresAt:
+            createClaimDto.expiresAt ??
+            new Date(
+              Date.now() + DEFAULT_CLAIM_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+            ),
+        },
+        include: {
+          campaign: true,
+        },
+      });
+
+      await tx.balanceLedger.create({
+        data: {
+          campaignId: createClaimDto.campaignId,
+          claimId: created.id,
+          eventType: 'lock',
+          amount: created.amount,
+          note: `Claim ${created.id} created; locked against campaign budget`,
+        },
+      });
+
+      return created;
     });
 
     claim.recipientRef = this.encryptionService.decrypt(claim.recipientRef);
@@ -151,7 +179,27 @@ export class ClaimsService {
     this.metricsService.incrementClaimsCreated(campaign.id);
     this.metricsService.adjustClaimsInFunnel('requested', 1);
 
+    await this.enqueueVerificationForClaim(claim.id);
+
     return claim;
+  }
+
+  /**
+   * Hand a freshly created claim to the AI verification pipeline.
+   *
+   * The claim is already durable by the time this runs, so a queue outage must
+   * not fail the request: the claim stays in `requested` without a
+   * verification record, which is exactly the state reconciliation reports on.
+   */
+  private async enqueueVerificationForClaim(claimId: string): Promise<void> {
+    try {
+      await this.verificationService.enqueueVerification(claimId);
+    } catch (error) {
+      this.loggerService.error(
+        `Failed to enqueue verification for claim ${claimId}`,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
 
   async findAll() {
@@ -164,6 +212,7 @@ export class ClaimsService {
     return claims.map(claim => ({
       ...claim,
       recipientRef: this.encryptionService.decrypt(claim.recipientRef),
+      verification: readPersistedVerificationResult(claim.anchorMetadata),
     }));
   }
 
@@ -181,10 +230,44 @@ export class ClaimsService {
     return {
       ...claim,
       recipientRef: this.encryptionService.decrypt(claim.recipientRef),
+      verification: readPersistedVerificationResult(claim.anchorMetadata),
     };
   }
 
+  /**
+   * Transition a claim to `verified`.
+   *
+   * This is no longer a standalone status flip. The verification pipeline
+   * writes its outcome onto the claim, and this method only applies that
+   * outcome, so a claim with no completed verification record - or one whose
+   * score did not clear the threshold - cannot be marked verified.
+   */
   async verify(id: string) {
+    const claim = await this.prisma.claim.findUnique({ where: { id } });
+    if (!claim) {
+      throw new NotFoundException('Claim not found');
+    }
+
+    const verification = readPersistedVerificationResult(claim.anchorMetadata);
+
+    if (!verification) {
+      throw new BadRequestException(
+        `Claim ${id} has no completed verification record. Verification is queued automatically when a claim is created; wait for it to complete before verifying.`,
+      );
+    }
+
+    if (!verification.passed) {
+      throw new BadRequestException(
+        `Claim ${id} did not pass verification (score ${verification.score} below threshold ${verification.threshold}) and cannot be marked verified.`,
+      );
+    }
+
+    if (claim.status === ClaimStatus.verified) {
+      // The pipeline already applied the same outcome - keep the call
+      // idempotent instead of failing on a no-op transition.
+      return this.findOne(id);
+    }
+
     return this.transitionStatus(
       id,
       ClaimStatus.requested,
@@ -572,7 +655,14 @@ export class ClaimsService {
     return `${explorerBase}/testnet/tx/${transactionHash}`;
   }
 
-  private async resolveClaimByIdentifier(identifier: string): Promise<any> {
+  /**
+   * Resolve a claim from either a claim ID or a package (campaign) identifier.
+   * When given a package ID, returns the most recent claim for that package.
+   */
+  async resolveClaimByIdentifier(
+    identifier: string,
+  ): Promise<ClaimWithCampaign> {
+    // 1. Try direct claim ID lookup
     try {
       const directClaim = await this.findOne(identifier);
       if (directClaim) return directClaim;
@@ -920,3 +1010,4 @@ export class ClaimsService {
     }
   }
 }
+

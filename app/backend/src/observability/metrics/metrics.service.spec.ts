@@ -48,6 +48,9 @@ const ALL_METRIC_NAMES = [
   'idempotency_keys_purged_total',
   'idempotency_purge_executions_total',
   'idempotency_purge_failures_total',
+  'evidence_queue_depth',
+  'evidence_queue_oldest_pending_age_seconds',
+  'evidence_intake_to_decision_duration_seconds',
 ];
 
 const stubMetric = () => ({
@@ -258,5 +261,79 @@ describe('MetricsService - entity link review queue metrics (issue #949)', () =>
       v => v.metricName?.endsWith('_sum') && v.labels.decision === 'accept',
     );
     expect(sumEntry?.value).toBe(120);
+  });
+});
+
+describe('MetricsService - evidence queue SLA metrics (issue #954)', () => {
+  let service: MetricsService;
+  let queueDepthGauge: Gauge<string>;
+  let oldestPendingGauge: Gauge<string>;
+  let intakeToDecisionHistogram: Histogram<string>;
+
+  beforeEach(async () => {
+    queueDepthGauge = new Gauge({
+      name: 'evidence_queue_depth',
+      help: 'test',
+      labelNames: ['status'],
+      registers: [],
+    });
+    oldestPendingGauge = new Gauge({
+      name: 'evidence_queue_oldest_pending_age_seconds',
+      help: 'test',
+      labelNames: [],
+      registers: [],
+    });
+    intakeToDecisionHistogram = new Histogram({
+      name: 'evidence_intake_to_decision_duration_seconds',
+      help: 'test',
+      labelNames: ['status'],
+      buckets: [1, 60, 3600],
+      registers: [],
+    });
+
+    const providers = ALL_METRIC_NAMES.map(name => {
+      if (name === 'evidence_queue_depth') {
+        return { provide: getToken(name), useValue: queueDepthGauge };
+      }
+      if (name === 'evidence_queue_oldest_pending_age_seconds') {
+        return { provide: getToken(name), useValue: oldestPendingGauge };
+      }
+      if (name === 'evidence_intake_to_decision_duration_seconds') {
+        return { provide: getToken(name), useValue: intakeToDecisionHistogram };
+      }
+      return { provide: getToken(name), useValue: stubMetric() };
+    });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [MetricsService, ...providers],
+    }).compile();
+
+    service = module.get<MetricsService>(MetricsService);
+  });
+
+  it('sets queue depth per EvidenceStatus', async () => {
+    service.setEvidenceQueueDepth('pending', 7);
+    service.setEvidenceQueueDepth('failed', 2);
+
+    const data = await queueDepthGauge.get();
+    expect(data.values.find(v => v.labels.status === 'pending')?.value).toBe(7);
+    expect(data.values.find(v => v.labels.status === 'failed')?.value).toBe(2);
+  });
+
+  it('sets the oldest-pending-age gauge', async () => {
+    service.setEvidenceQueueOldestPendingAgeSeconds(1800);
+
+    const data = await oldestPendingGauge.get();
+    expect(data.values[0]?.value).toBe(1800);
+  });
+
+  it('records intake-to-decision durations labelled by terminal status', async () => {
+    service.recordEvidenceIntakeToDecisionDuration('completed', 42);
+
+    const data = await intakeToDecisionHistogram.get();
+    const sumEntry = data.values.find(
+      v => v.metricName?.endsWith('_sum') && v.labels.status === 'completed',
+    );
+    expect(sumEntry?.value).toBe(42);
   });
 });

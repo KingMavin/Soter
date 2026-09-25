@@ -1,11 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AidDetails, fetchAidDetails, submitClaim } from './aidApi';
+import {
+  isRateLimitedError,
+  parseRetryAfterMs,
+  RateLimitedError,
+} from './requestLayer';
 
 import { config } from '../config';
+import { buildCorrelationHeaders, structuredLogger } from './logger';
 
 const API_URL = config.apiUrl;
 
 const SYNC_QUEUE_STORAGE_KEY = '@soter/sync-queue';
+const SYNC_LOG_SCOPE = 'sync';
 const DEFAULT_MAX_RETRIES = 5;
 const BASE_RETRY_DELAY_MS = 30_000;
 const MAX_RETRY_DELAY_MS = 15 * 60 * 1000;
@@ -137,6 +144,11 @@ export interface QueuedSyncAction<TPayload = SyncActionPayload> {
   lastError: string | null;
   deferralReason?: DeferralReason;
   deferralLog?: string[];
+  /** Consecutive HTTP 429 responses for this action; drives extended rate-limit backoff. */
+  rateLimitCount?: number;
+  /** Correlation id generated at enqueue time; joins app log lines and
+   *  backend request logs for every attempt of this sync item. */
+  correlationId?: string;
 }
 
 export interface SyncQueueState {
@@ -213,8 +225,55 @@ const persistQueue = async () => {
 
 const makeActionId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
+/** Correlation ids follow the existing `mobile-<ts>-<hex>` convention so
+ *  they are trivially distinguishable in backend request logs. */
+const makeCorrelationId = () => `sync-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
+
+const logSync = (
+  level: 'debug' | 'info' | 'warn' | 'error',
+  message: string,
+  action: Pick<QueuedSyncAction, 'correlationId'>,
+  data?: Record<string, unknown>,
+): void => {
+  structuredLogger[level](message, { correlationId: action.correlationId, ...data }, SYNC_LOG_SCOPE);
+};
+
 const backoffDelayMs = (retryCount: number) =>
   Math.min(BASE_RETRY_DELAY_MS * 2 ** retryCount, MAX_RETRY_DELAY_MS);
+
+/**
+ * Rate-limit backoff for the sync queue.
+ *
+ * - Honours `Retry-After` when the server sends one.
+ * - On repeated 429s, extends the delay via a streak floor so a short
+ *   Retry-After cannot reset the schedule back to the default.
+ * - Independent of battery/metered deferral (those only gate *when* flush
+ *   considers an item; this only sets `nextRetryAt`).
+ */
+export const computeRateLimitBackoffMs = (
+  consecutiveRateLimits: number,
+  retryAfterMs: number | null,
+  options?: { saverMode?: boolean },
+): number => {
+  const streak = Math.max(1, consecutiveRateLimits);
+  const streakFloor = Math.min(BASE_RETRY_DELAY_MS * 2 ** streak, MAX_RETRY_DELAY_MS);
+
+  let delay: number;
+  if (retryAfterMs != null && retryAfterMs >= 0) {
+    // First 429: respect Retry-After as-is. Repeated 429s: never shrink below streak floor.
+    delay = streak > 1 ? Math.max(retryAfterMs, streakFloor) : retryAfterMs;
+  } else {
+    delay = streakFloor;
+  }
+
+  if (options?.saverMode) {
+    delay *= SAVER_BACKOFF_MULTIPLIER;
+  }
+
+  return Math.min(Math.max(delay, 0), MAX_RETRY_DELAY_MS);
+};
+
+export { parseRetryAfterMs, RateLimitedError, isRateLimitedError };
 
 const toErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
@@ -222,6 +281,24 @@ const toErrorMessage = (error: unknown) => {
   }
 
   return 'Unexpected sync failure';
+};
+
+/** Throw RateLimitedError (with Retry-After) on 429; otherwise a generic HTTP error. */
+const throwHttpError = (response: Response, prefix?: string): never => {
+  if (response.status === 429) {
+    const retryAfterMs = parseRetryAfterMs(
+      typeof response.headers?.get === 'function'
+        ? response.headers.get('Retry-After')
+        : null,
+    );
+    const message = prefix
+      ? `${prefix}: HTTP error! status: 429`
+      : 'HTTP error! status: 429';
+    throw new RateLimitedError(retryAfterMs, message);
+  }
+
+  const statusMsg = `HTTP error! status: ${response.status}`;
+  throw new Error(prefix ? `${prefix}: ${statusMsg}` : statusMsg);
 };
 
 export const isConflictError = (error: unknown): boolean => {
@@ -355,7 +432,7 @@ const logDeferral = (action: QueuedSyncAction, reason: DeferralReason, details: 
   return logEntry;
 };
 
-const enqueue = async (request: SyncActionRequest) => {
+const enqueue = async (request: SyncActionRequest, options?: { correlationId?: string }) => {
   await hydrateQueue();
 
   // Idempotency: if a claim-submission with the same key is already queued
@@ -384,24 +461,27 @@ const enqueue = async (request: SyncActionRequest) => {
     createdAt: now,
     updatedAt: now,
     lastError: null,
+    correlationId: options?.correlationId ?? makeCorrelationId(),
   };
 
   await replaceQueueItems([...queueState.items, action]);
+  logSync('info', 'sync.queue.enqueued', action, { actionType: action.type, actionId: action.id });
   return action;
 };
 
 const runAction = async (action: QueuedSyncAction) => {
   switch (action.type) {
     case 'status-refresh':
-      return fetchAidDetails((action.payload as StatusRefreshPayload).aidId);
+      return fetchAidDetails((action.payload as StatusRefreshPayload).aidId, action.correlationId);
     case 'claim-confirmation': {
       const { claimId } = action.payload as ClaimConfirmationPayload;
       const response = await fetch(`${API_URL}/claims/${claimId}/verify`, {
         method: 'POST',
+        headers: buildCorrelationHeaders(action.correlationId),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throwHttpError(response);
       }
 
       return response.json();
@@ -431,6 +511,7 @@ const runAction = async (action: QueuedSyncAction) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            ...buildCorrelationHeaders(action.correlationId),
           },
           body: JSON.stringify({
             fileName: requestData.filename,
@@ -446,6 +527,9 @@ const runAction = async (action: QueuedSyncAction) => {
             const errData = await createSessionRes.json();
             if (errData?.message) errorMsg = errData.message;
           } catch {}
+          if (createSessionRes.status === 429) {
+            throwHttpError(createSessionRes, 'Failed to create upload session');
+          }
           throw new Error(`Failed to create upload session: ${errorMsg}`);
         }
 
@@ -457,7 +541,9 @@ const runAction = async (action: QueuedSyncAction) => {
         await persistQueue();
         emitQueueState();
       } else {
-        const statusRes = await fetch(`${API_URL}/evidence/upload-sessions/${payload.sessionId}/status`);
+        const statusRes = await fetch(`${API_URL}/evidence/upload-sessions/${payload.sessionId}/status`, {
+          headers: buildCorrelationHeaders(action.correlationId),
+        });
         if (statusRes.status === 404) {
           payload.sessionId = undefined;
           payload.uploadedChunks = undefined;
@@ -468,7 +554,7 @@ const runAction = async (action: QueuedSyncAction) => {
           return runAction(action);
         }
         if (!statusRes.ok) {
-          throw new Error(`Failed to query session status: ${statusRes.status}`);
+          throwHttpError(statusRes, 'Failed to query session status');
         }
         const statusData = await statusRes.json();
         payload.uploadedChunks = statusData.receivedChunks || [];
@@ -501,6 +587,7 @@ const runAction = async (action: QueuedSyncAction) => {
         const uploadChunkRes = await fetch(`${API_URL}/evidence/upload-sessions/${payload.sessionId}/chunks`, {
           method: 'POST',
           body: formData,
+          headers: buildCorrelationHeaders(action.correlationId),
         });
 
         if (!uploadChunkRes.ok) {
@@ -509,6 +596,9 @@ const runAction = async (action: QueuedSyncAction) => {
             const errData = await uploadChunkRes.json();
             if (errData?.message) errorMsg = errData.message;
           } catch {}
+          if (uploadChunkRes.status === 429) {
+            throwHttpError(uploadChunkRes, `Chunk ${index} upload failed`);
+          }
           throw new Error(`Chunk ${index} upload failed: ${errorMsg}`);
         }
 
@@ -523,6 +613,7 @@ const runAction = async (action: QueuedSyncAction) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...buildCorrelationHeaders(action.correlationId),
         },
       });
 
@@ -532,6 +623,9 @@ const runAction = async (action: QueuedSyncAction) => {
           const errData = await finalizeRes.json();
           if (errData?.message) errorMsg = errData.message;
         } catch {}
+        if (finalizeRes.status === 429) {
+          throwHttpError(finalizeRes, 'Failed to finalize upload');
+        }
         throw new Error(`Failed to finalize upload: ${errorMsg}`);
       }
 
@@ -539,7 +633,7 @@ const runAction = async (action: QueuedSyncAction) => {
     }
     case 'claim-submission': {
       const { claimId, idempotencyKey } = action.payload as ClaimSubmissionPayload;
-      return submitClaim(claimId, idempotencyKey);
+      return submitClaim(claimId, idempotencyKey, action.correlationId);
     }
     default:
       throw new Error(`Unsupported sync action type: ${String(action.type)}`);
@@ -591,11 +685,16 @@ export const dispatchNetworkAction = async <T extends SyncActionType>(
     createdAt: now,
     updatedAt: now,
     lastError: null,
+    correlationId: makeCorrelationId(),
   };
+
+  // Online path: the offline case returned above, so online is always true here.
+  logSync('info', 'sync.dispatch.started', previewAction, { actionType: previewAction.type, actionId: previewAction.id, online: true });
 
   try {
     const result = (await runAction(previewAction)) as SyncExecutionResultMap[T];
     const completedAt = new Date().toISOString();
+    logSync('info', 'sync.dispatch.completed', previewAction, { actionType: previewAction.type, actionId: previewAction.id });
     successSubscribers.forEach((listener) =>
       listener({ action: previewAction, completedAt, result }),
     );
@@ -605,6 +704,8 @@ export const dispatchNetworkAction = async <T extends SyncActionType>(
     });
     return { status: 'completed', result };
   } catch (error) {
+    logSync('warn', 'sync.dispatch.failed', previewAction, { actionType: previewAction.type, actionId: previewAction.id, error: toErrorMessage(error) });
+
     if (isConflictError(error)) {
       const now = new Date().toISOString();
       const conflictMessage = mapConflictErrorMessage(toErrorMessage(error));
@@ -619,6 +720,7 @@ export const dispatchNetworkAction = async <T extends SyncActionType>(
         createdAt: now,
         updatedAt: now,
         lastError: toErrorMessage(error),
+        correlationId: previewAction.correlationId,
       };
       await replaceQueueItems([...queueState.items, action]);
       setQueueState({
@@ -631,7 +733,9 @@ export const dispatchNetworkAction = async <T extends SyncActionType>(
       throw error;
     }
 
-    const action = await enqueue(request);
+    // Keep the preview attempt's correlation id so the failed attempt and
+    // all subsequent retries of the queued item share one correlation id.
+    const action = await enqueue(request, { correlationId: previewAction.correlationId });
     setQueueState({
       lastSyncError: toErrorMessage(error),
     });
@@ -723,6 +827,11 @@ export const flushPendingNetworkActions = async (options?: {
 
       if (shouldDefer) {
         deferredCount++;
+        logSync('info', 'sync.flush.deferred', action, {
+          actionType: action.type,
+          actionId: action.id,
+          reason: deferralReason,
+        });
         // Update action with deferral info
         items = items.map(item =>
           item.id === action.id
@@ -740,7 +849,13 @@ export const flushPendingNetworkActions = async (options?: {
       actionsProcessed++;
 
       try {
+        logSync('info', 'sync.flush.attempt', action, {
+          actionType: action.type,
+          actionId: action.id,
+          attempt: action.retryCount + 1,
+        });
         const result = await runAction(action);
+        logSync('info', 'sync.flush.completed', action, { actionType: action.type, actionId: action.id });
         if (action.type === 'claim-submission') {
           // Keep the item in the queue as 'submitted' for status display
           items = items.map((item) =>
@@ -768,6 +883,7 @@ export const flushPendingNetworkActions = async (options?: {
         );
       } catch (error) {
         const isConflict = isConflictError(error);
+        const rateLimited = isRateLimitedError(error);
         const retryCount = action.retryCount + 1;
         const nextState: SyncActionState = isConflict
           ? 'conflict'
@@ -775,8 +891,28 @@ export const flushPendingNetworkActions = async (options?: {
           ? 'failed'
           : 'retrying';
 
+        logSync(nextState === 'retrying' ? 'warn' : 'error', 'sync.flush.failed', action, {
+          actionType: action.type,
+          actionId: action.id,
+          attempt: retryCount,
+          nextState,
+          error: toErrorMessage(error),
+        });
+
         // In saver mode, use a longer backoff to reduce network usage
         const backoffMultiplier = isSaverMode ? SAVER_BACKOFF_MULTIPLIER : 1;
+
+        // Rate-limit backoff is distinct from battery/metered deferral:
+        // deferral only skips items during flush; this only advances nextRetryAt.
+        const rateLimitCount = rateLimited ? (action.rateLimitCount ?? 0) + 1 : 0;
+        const retryAfterMs =
+          error instanceof RateLimitedError ? error.retryAfterMs : null;
+
+        const delayMs = rateLimited
+          ? computeRateLimitBackoffMs(rateLimitCount, retryAfterMs, {
+              saverMode: isSaverMode,
+            })
+          : backoffDelayMs(retryCount) * backoffMultiplier;
 
         items = items.map((item) =>
           item.id === action.id
@@ -784,9 +920,8 @@ export const flushPendingNetworkActions = async (options?: {
                 ...item,
                 state: nextState,
                 retryCount,
-                nextRetryAt: new Date(
-                  Date.now() + backoffDelayMs(retryCount) * backoffMultiplier,
-                ).toISOString(),
+                rateLimitCount,
+                nextRetryAt: new Date(Date.now() + delayMs).toISOString(),
                 updatedAt: new Date().toISOString(),
                 lastError: toErrorMessage(error),
               }
@@ -826,7 +961,15 @@ export const requeueAction = async (actionId: string) => {
   const now = new Date().toISOString();
   const items = queueState.items.map((item) =>
     item.id === actionId
-      ? { ...item, state: 'pending' as SyncActionState, retryCount: 0, nextRetryAt: now, lastError: null, updatedAt: now }
+      ? {
+          ...item,
+          state: 'pending' as SyncActionState,
+          retryCount: 0,
+          rateLimitCount: 0,
+          nextRetryAt: now,
+          lastError: null,
+          updatedAt: now,
+        }
       : item,
   );
   await replaceQueueItems(items);

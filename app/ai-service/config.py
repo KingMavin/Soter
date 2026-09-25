@@ -65,6 +65,7 @@ class Settings(BaseSettings):
         HOST: Server host (default: 0.0.0.0)
         PORT: Server port (default: 8000)
         REDIS_URL: Redis connection URL for task broker (default: redis://localhost:6379/0)
+        ASYNC_JOB_IDLE_TIMEOUT_SECONDS: Queued jobs not started by a worker within this window are marked timed out (default: 600)
         BACKEND_WEBHOOK_URL: Webhook URL to notify NestJS backend when tasks complete
         PROOF_OF_LIFE_CONFIDENCE_THRESHOLD: Default threshold for liveness verification
         PROOF_OF_LIFE_MIN_FACE_SIZE: Minimum detected face size in pixels
@@ -128,6 +129,23 @@ class Settings(BaseSettings):
     circuit_breaker_failure_threshold: int = 3
     circuit_breaker_recovery_timeout_seconds: float = 30.0
 
+    # Circuit breaker alerting (issue #1205).
+    # When a breaker transitions to OPEN (a provider is failing) or back to
+    # CLOSED (the provider recovered), a signed webhook alert is POSTed to
+    # CIRCUIT_BREAKER_ALERT_WEBHOOK_URL so operators hear about an outage
+    # without polling the admin endpoint. The payload is HMAC-SHA256 signed
+    # with AI_WEBHOOK_SECRET using the same ``X-Signature-256`` scheme as the
+    # existing task-callback webhook. See CIRCUIT_BREAKER_ALERTS.md.
+    circuit_breaker_alerts_enabled: bool = True
+    # Dedicated alert sink. Leave unset to disable alert delivery entirely
+    # (the breaker still logs every transition).
+    circuit_breaker_alert_webhook_url: Optional[HttpUrl] = None
+    # Per-(provider, transition-event) de-duplication window in seconds.
+    # Repeated open/close flapping inside this window collapses to a single
+    # alert per transition direction, so a flapping provider cannot spam the
+    # channel. Set to 0 to disable de-duplication.
+    circuit_breaker_alert_dedup_seconds: float = 300.0
+
     # Provider fallback ordering.
     # Explicit, operator-controlled ordering used when a request must fall back
     # across providers (e.g. under ``provider_preference="auto"``). Comma-
@@ -141,6 +159,11 @@ class Settings(BaseSettings):
     # Load shedding settings
     load_shed_memory_threshold_percent: float = 90.0
     load_shed_max_celery_queue_depth: int = 100
+    # Graduated queue depth thresholds for priority-based shedding
+    load_shed_high_celery_queue_depth: Optional[int] = 75
+    load_shed_low_celery_queue_depth: Optional[int] = 50
+    # Provider health threshold for degraded state (0.0-1.0)
+    load_shed_provider_degraded_threshold: float = 0.3
 
     # Dead-letter replay settings
     dead_letter_max_replay_attempts: int = 5
@@ -176,6 +199,26 @@ class Settings(BaseSettings):
     fraud_pass_max_score: float = 0.40
     fraud_review_max_score: float = 0.75
 
+    # OCR confidence banding / manual-review routing (issue #984).
+    # A low-confidence OCR extraction must not be treated as authoritative.
+    # The aggregate score is the mean of the per-field confidences in [0, 1];
+    # scores below ``ocr_confidence_review_threshold`` are flagged for review
+    # (band "low"), scores at/above ``ocr_confidence_high_threshold`` are band
+    # "high", and everything between is "medium".  A result carrying no
+    # confidence at all is always flagged for review.  Per-document-type
+    # overrides for the review threshold can be supplied as a JSON object in
+    # OCR_CONFIDENCE_THRESHOLDS_BY_DOCUMENT_TYPE.
+    ocr_confidence_review_threshold: float = 0.75
+    ocr_confidence_high_threshold: float = 0.90
+    ocr_confidence_thresholds_by_document_type: Dict[str, float] = Field(
+        default_factory=lambda: {
+            "id_card": 0.80,
+            "passport": 0.85,
+            "invoice": 0.70,
+            "receipt": 0.70,
+        }
+    )
+
     # Application settings
     app_env: Literal["development", "staging", "production", "test"] = "development"
     log_level: str = "INFO"
@@ -187,6 +230,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     task_max_retries: int = 3
     task_retry_delay_seconds: int = 30
+    # A job still waiting for a worker after this many seconds is marked
+    # timed_out on its next status poll instead of sitting queued forever
+    # (issue #1208). Only applies to jobs that have not started processing.
+    async_job_idle_timeout_seconds: float = 600.0
 
     # Backend webhook URL for notifications
     backend_webhook_url: HttpUrl = (
@@ -331,6 +378,7 @@ class Settings(BaseSettings):
             ("CACHE_TTL_ARTIFACT_ACCESS", self.cache_ttl_artifact_access),
             ("CACHE_TTL_VERIFICATION", self.cache_ttl_verification),
             ("TASK_RETRY_DELAY_SECONDS", self.task_retry_delay_seconds),
+            ("ASYNC_JOB_IDLE_TIMEOUT_SECONDS", self.async_job_idle_timeout_seconds),
             (
                 "VERIFICATION_ARTIFACT_URL_TTL_SECONDS",
                 self.verification_artifact_url_ttl_seconds,
@@ -352,6 +400,16 @@ class Settings(BaseSettings):
             )
         if self.decision_audit_enabled and not str(self.decision_audit_path).strip():
             _add("DECISION_AUDIT_PATH", "must not be blank when auditing is enabled")
+
+        # --- Circuit breaker alert de-duplication window (issue #1205) ----
+        # 0 is a valid, documented value meaning "no de-duplication", so this
+        # is a non-negativity check rather than a positivity check.
+        if self.circuit_breaker_alert_dedup_seconds < 0:
+            _add(
+                "CIRCUIT_BREAKER_ALERT_DEDUP_SECONDS",
+                "must be 0 (no de-duplication) or a positive number of seconds "
+                f"(got {self.circuit_breaker_alert_dedup_seconds})",
+            )
 
         # --- Bounded numeric settings ------------------------------------
         if not 0.0 <= self.proof_of_life_confidence_threshold <= 1.0:
@@ -380,6 +438,38 @@ class Settings(BaseSettings):
                 f"FRAUD_REVIEW_MAX_SCORE (got {self.fraud_pass_max_score} >= "
                 f"{self.fraud_review_max_score})",
             )
+
+        # --- OCR confidence banding thresholds (issue #984) ---------------
+        if not 0.0 <= self.ocr_confidence_review_threshold <= 1.0:
+            _add(
+                "OCR_CONFIDENCE_REVIEW_THRESHOLD",
+                "must be between 0.0 and 1.0 "
+                f"(got {self.ocr_confidence_review_threshold})",
+            )
+        if not 0.0 <= self.ocr_confidence_high_threshold <= 1.0:
+            _add(
+                "OCR_CONFIDENCE_HIGH_THRESHOLD",
+                "must be between 0.0 and 1.0 "
+                f"(got {self.ocr_confidence_high_threshold})",
+            )
+        if self.ocr_confidence_review_threshold > self.ocr_confidence_high_threshold:
+            _add(
+                "OCR_CONFIDENCE_REVIEW_THRESHOLD / OCR_CONFIDENCE_HIGH_THRESHOLD",
+                "OCR_CONFIDENCE_REVIEW_THRESHOLD must not exceed "
+                "OCR_CONFIDENCE_HIGH_THRESHOLD (got "
+                f"{self.ocr_confidence_review_threshold} > "
+                f"{self.ocr_confidence_high_threshold})",
+            )
+        for (
+            document_type,
+            threshold,
+        ) in self.ocr_confidence_thresholds_by_document_type.items():
+            if not 0.0 <= threshold <= 1.0:
+                _add(
+                    "OCR_CONFIDENCE_THRESHOLDS_BY_DOCUMENT_TYPE",
+                    f"document type '{document_type}' threshold must be "
+                    f"between 0.0 and 1.0 (got {threshold})",
+                )
 
         # --- CORS origins: entries must be absolute origins --------------
         for key, raw in (

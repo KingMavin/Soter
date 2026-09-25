@@ -105,6 +105,14 @@ export class MetricsService {
     public idempotencyPurgeExecutionsCounter: Counter<string>,
     @InjectMetric('idempotency_purge_failures_total')
     public idempotencyPurgeFailuresCounter: Counter<string>,
+
+    // Evidence Queue SLA Metrics (issue #954)
+    @InjectMetric('evidence_queue_depth')
+    public evidenceQueueDepthGauge: Gauge<string>,
+    @InjectMetric('evidence_queue_oldest_pending_age_seconds')
+    public evidenceQueueOldestPendingAgeGauge: Gauge<string>,
+    @InjectMetric('evidence_intake_to_decision_duration_seconds')
+    public evidenceIntakeToDecisionDuration: Histogram<string>,
   ) {}
 
   /**
@@ -508,6 +516,36 @@ export class MetricsService {
     durationSeconds: number,
   ): void {
     this.entityLinkReviewDuration.observe({ decision }, durationSeconds);
+  }
+
+  // Evidence Queue SLA Metrics (issue #954)
+
+  /**
+   * Set the absolute evidence queue depth for an EvidenceStatus. Called from
+   * a periodic refresh so the gauge reflects the true backlog per status.
+   * Label cardinality is bounded by the EvidenceStatus enum.
+   */
+  setEvidenceQueueDepth(status: string, count: number): void {
+    this.evidenceQueueDepthGauge.set({ status }, count);
+  }
+
+  /**
+   * Set the age (seconds) of the oldest evidence item still pending review,
+   * or 0 when the pending backlog is empty.
+   */
+  setEvidenceQueueOldestPendingAgeSeconds(ageSeconds: number): void {
+    this.evidenceQueueOldestPendingAgeGauge.set(ageSeconds);
+  }
+
+  /**
+   * Record how long an evidence item took to go from intake to a terminal
+   * decision (`completed` or `failed`), in seconds.
+   */
+  recordEvidenceIntakeToDecisionDuration(
+    status: string,
+    durationSeconds: number,
+  ): void {
+    this.evidenceIntakeToDecisionDuration.observe({ status }, durationSeconds);
   }
 
   /**

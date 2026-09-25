@@ -90,6 +90,21 @@ REQUESTS_SHED_TOTAL = Counter(
     "Requests rejected due to overload (load shedding)",
     ["reason", "method", "endpoint"],
 )
+LOAD_SHED_QUEUE_DEPTH = Histogram(
+    "load_shed_queue_depth",
+    "Queue depth at the time of load shedding",
+    buckets=[10, 25, 50, 75, 100, 150, 200, 300, 500, 1000],
+)
+LOAD_SHED_PROVIDER_HEALTH = Counter(
+    "load_shed_provider_health_total",
+    "Load shedding decisions by provider health status",
+    ["provider_health"],
+)
+LOAD_SHED_BY_PRIORITY = Counter(
+    "load_shed_by_priority_total",
+    "Load shedding decisions by job priority",
+    ["priority"],
+)
 REQUEST_REJECTIONS_TOTAL = Counter(
     "api_request_rejections_total",
     "Requests rejected or constrained by request safety limits",
@@ -136,12 +151,29 @@ JOB_CANCELLED_TOTAL = Counter(
     "job_cancelled_total", "Total jobs cancelled", ["task_type"]
 )
 JOB_EXPIRED_TOTAL = Counter("job_expired_total", "Total jobs expired", ["task_type"])
+JOB_IDLE_TIMEOUT_TOTAL = Counter(
+    "job_idle_timeout_total",
+    "Total jobs marked timed out after waiting for a worker past the idle window",
+    ["task_type"],
+)
 
 # Cache invalidation metrics
 CACHE_INVALIDATION_TOTAL = Counter(
     "cache_invalidation_total",
     "Cache invalidation operations performed",
     ["reason"],
+)
+
+# Circuit breaker alerting metrics (issue #1205)
+#
+# Labels are bounded: `provider` is a code-defined provider name (the same
+# fixed registry used by circuit_breaker_state), `event` is one of the two
+# literal transition events, and `outcome` is a small fixed set. Never label
+# by failure reason or any caller-supplied string (see the module docstring).
+CIRCUIT_BREAKER_ALERTS_TOTAL = Counter(
+    "circuit_breaker_alerts_total",
+    "Circuit breaker alert notifications by provider, event, and outcome",
+    ["provider", "event", "outcome"],
 )
 
 

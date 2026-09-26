@@ -29,16 +29,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -102,13 +92,9 @@ jobs:
         run: pnpm --filter backend run lint
 
       - name: Test
-        run: pnpm --filter backend exec jest --runInBand
+        run: pnpm --filter backend run test
         env:
           DATABASE_URL: postgresql://soter:soter@localhost:5432/soter_test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
-          NODE_ENV: test
-          ONCHAIN_ADAPTER: mock
 
       - name: Build
         run: pnpm --filter backend run build

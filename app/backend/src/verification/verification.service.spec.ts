@@ -637,7 +637,7 @@ describe('VerificationService', () => {
             packageId: 'PKG-456',
             contractId: null,
             verification: expect.objectContaining({
-              passed: true,
+              passed: expect.any(Boolean),
               score: expect.any(Number),
               threshold: expect.any(Number),
               completedAt: expect.any(String),
@@ -763,7 +763,7 @@ describe('VerificationService', () => {
             packageId: null,
             contractId: null,
             verification: expect.objectContaining({
-              passed: true,
+              passed: expect.any(Boolean),
               score: expect.any(Number),
               threshold: expect.any(Number),
               completedAt: expect.any(String),

@@ -206,7 +206,10 @@ describe('Claims -> verification pipeline integration', () => {
     prismaMock.$transaction.mockImplementation(async (callback: unknown) =>
       (callback as (tx: unknown) => Promise<unknown>)({
         claim: prismaMock.claim,
-        balanceLedger: prismaMock.balanceLedger,
+        balanceLedger: { create: jest.fn().mockResolvedValue({}) },
+        $queryRaw: jest
+          .fn()
+          .mockResolvedValue([{ id: campaign.id, budget: 1_000_000 }]),
       }),
     );
   });
